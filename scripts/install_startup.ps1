@@ -6,7 +6,7 @@
 param([switch]$Remove)
 $ErrorActionPreference = "Stop"
 $taskName = "Abel control panel"
-$oldNames = @("Abel control panel")   # earlier name of the same task
+$oldNames = @("JARVIS control panel")   # earlier name of the same task
 $repo = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $PSScriptRoot "run_panel.ps1"
 

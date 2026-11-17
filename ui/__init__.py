@@ -1,1 +1,1 @@
-"""Local control panel for politemalljarvis: start/stop JARVIS and use it from a browser on this machine."""
+"""Local control panel for Abel: start/stop Abel and use it from a browser on this machine."""

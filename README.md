@@ -64,8 +64,8 @@ Each person runs their own copy with their own Telegram bot and their own logins
 ## Install
 
 ```bash
-git clone https://github.com/lenzo3D/np-jarvis-public.git
-cd np-jarvis-public
+git clone https://github.com/lenzo3D/abel-public.git
+cd abel-public
 ./install.sh
 ```
 
@@ -75,8 +75,8 @@ setup, and opens the control panel. On a Mac you can also double-click **Open Ab
 **On Windows 10/11** (in PowerShell, from the folder you cloned):
 
 ```powershell
-git clone https://github.com/lenzo3D/np-jarvis-public.git
-cd np-jarvis-public
+git clone https://github.com/lenzo3D/abel-public.git
+cd abel-public
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -148,7 +148,7 @@ More in [SECURITY.md](SECURITY.md).
 ```bash
 scripts/install_launchagent.sh --remove   # Mac only: stop starting at login
 # Windows: powershell -ExecutionPolicy Bypass -File scripts\install_startup.ps1 -Remove
-cd .. && rm -rf np-jarvis-public          # deletes Abel and everything it stored
+cd .. && rm -rf abel-public          # deletes Abel and everything it stored
 ```
 
 Revoke the bot in @BotFather (`/revoke`) and change your POLITEMall password if you want a clean break.

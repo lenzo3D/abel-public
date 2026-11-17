@@ -1,4 +1,4 @@
-# Developer notes — politemalljarvis (Abel)
+# Developer notes: Abel
 
 Read this first if you are a developer (or a Claude session) picking up this project.
 It is the technical memory of the project; user-facing documentation is in `README.md` and `docs/`.
@@ -27,8 +27,9 @@ Renamed on 2026-11-17 so the tool looks professional in class and on LinkedIn. E
 panel, Telegram messages, prompts, installers, launchers (`Open Abel.command` / `Open Abel.bat`) and docs. The voice is
 plain and professional (`ops/persona.py`): no "Sir", no butler role-play; `ADDRESS_AS` is used only when it is a name
 (old honorifics are ignored), otherwise the first word of `USER_NAME`.
-Kept on purpose, because renaming them would break existing installs or data: the repo and folder names
-(`politemalljarvis`, `np-jarvis-public`), Python package and module names, `state/jarvis.db`, the Google Calendar
+The GitHub repos were renamed the same day to `abel` (private) and `abel-public` (old URLs redirect). Kept on
+purpose, because renaming them would break existing installs or data: the local install folder (`politemalljarvis`),
+the Python package and module names, `state/jarvis.db`, the Google Calendar
 marker `extendedProperties.private.jarvis_key` (renaming it would orphan every event Abel already created), env vars
 (`JARVIS_UI_OPEN`, `JARVIS_RESTART_BY_PARENT`), the panel's CSRF header `X-JARVIS-UI` and `jarvis-*` browser storage
 keys, the macOS LaunchAgent label `com.politemalljarvis.panel`, and the server's systemd unit names. The Windows

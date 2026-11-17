@@ -11,7 +11,7 @@ Private history is never copied. Files listed in `.publicignore` stay private.
 3. Create a fine-grained personal access token (GitHub > Settings > Developer settings): only the public repo,
    permission **Contents: Read and write**.
 4. In the private repo: Settings > Secrets and variables > Actions. Add the secret `PUBLIC_REPO_TOKEN` (the token)
-   and the variable `PUBLIC_REPO` (`lenzo3D/np-jarvis-public`).
+   and the variable `PUBLIC_REPO` (`lenzo3D/abel-public`).
 5. Push anything to `main` (or run the workflow by hand from the Actions tab) and check the public repo updated.
 
 ## Rules
