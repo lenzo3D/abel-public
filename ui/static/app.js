@@ -81,33 +81,34 @@ function uptime(sec) {
 }
 function systemState(data) {
   const mode = data.ops.mode, conns = data.connections || [];
-  if (mode === "stopped") return { key: "offline", word: "OFFLINE", dot: "grey", sub: "Not running. Press Start." };
-  if (mode === "starting" || mode === "restarting") return { key: "starting", word: "STARTING", dot: "amber", sub: mode === "restarting" ? "Recovering from a problem" : "Starting up" };
-  if (mode === "unresponsive") return { key: "attention", word: "ATTENTION", dot: "red", sub: "Not responding. Try Restart." };
+  if (mode === "stopped") return { key: "offline", word: "Stopped", dot: "grey", sub: "Abel is not running. Press Start." };
+  if (mode === "starting" || mode === "restarting") return { key: "starting", word: mode === "restarting" ? "Restarting" : "Starting", dot: "amber", sub: mode === "restarting" ? "Recovering from a problem" : "Starting up" };
+  if (mode === "unresponsive") return { key: "attention", word: "Not responding", dot: "red", sub: "Abel is not responding. Try Restart." };
   const red = conns.filter((c) => c.color === "red").length, other = conns.filter((c) => c.color !== "green").length;
-  const sub = mode === "external" ? "Started outside this panel" : "Uptime " + uptime(data.ops.uptime_s);
-  if (red) return { key: "attention", word: "ATTENTION", dot: "red", sub: red + " connection" + (red > 1 ? "s" : "") + " need a login" };
-  if (other) return { key: "degraded", word: "DEGRADED", dot: "amber", sub: "Some connections are unconfirmed. " + sub };
-  return { key: "online", word: "OPTIMAL", dot: "green", sub };
+  const sub = mode === "external" ? "Started outside this panel" : "Running for " + uptime(data.ops.uptime_s);
+  const need = (n) => n + (n === 1 ? " needs" : " need") + " attention";
+  if (red) return { key: "attention", word: need(other), dot: "red", sub: red + " connection" + (red > 1 ? "s" : "") + " need" + (red > 1 ? "" : "s") + " a login" };
+  if (other) return { key: "degraded", word: need(other), dot: "amber", sub: "Some connections are unconfirmed. " + sub };
+  return { key: "online", word: conns.length ? "All services connected" : "Running", dot: "green", sub };
 }
 function gauge(id, numId, done, total) {
   const frac = total ? done / total : 0;
-  $(id).style.strokeDashoffset = String(201 * (1 - frac));
+  $(id).style.width = Math.round(frac * 100) + "%";
+  $(id).parentElement.dataset.full = String(total > 0 && done === total);
   $(numId).textContent = done + "/" + total;
 }
 
 /* ---------- identity ---------- */
-const who = { name: "You", address: "Sir" };
+const who = { name: "You" };
 function setIdentity(id) {
-  who.address = id.address || "Sir";
-  who.name = id.name || "You";
-  const label = id.name || "Operator";
-  $("who-name").textContent = label;
-  $("op-name").textContent = label;
-  $("brand-foot").textContent = id.name ? id.name.toUpperCase() + " INDUSTRIES" : "PERSONAL INDUSTRIES";
+  const name = (id.name || "").trim();
+  who.name = name || "You";
+  $("op-name").hidden = !name;
+  $("op-label").textContent = name;
+  $("op-initial").textContent = name ? name[0].toUpperCase() : "";
 }
 
-/* ---------- command center ---------- */
+/* ---------- overview ---------- */
 async function refreshState() {
   const { ok, data } = await api("/api/state");
   if (!ok || !data) { systemMessage("The control panel cannot reach its server."); return; }
@@ -116,9 +117,8 @@ async function refreshState() {
   if (data.identity) setIdentity(data.identity);
   $("sys-dot").className = "dot " + sys.dot;
   $("sys-text").textContent = sys.word;
-  $("sys-text").style.color = { green: "var(--ok)", amber: "var(--warn)", red: "var(--bad)", grey: "var(--muted)" }[sys.dot];
   $("hero").dataset.state = sys.key;
-  $("core-state").textContent = sys.key === "online" ? "ONLINE" : sys.word;
+  $("core-state").textContent = sys.word;
   $("core-sub").textContent = sys.sub;
   const mode = data.ops.mode;
   const live = ["running", "starting", "unresponsive", "restarting"].includes(mode);
@@ -132,7 +132,7 @@ async function refreshState() {
   renderConnections(data.connections || []);
   const c = data.counts || {};
   fill($("core-list"),
-    coreRow(MODE_COLOR[mode], "JARVIS core", MODE_WORD[mode] || mode, ""),
+    coreRow(MODE_COLOR[mode], "Abel", MODE_WORD[mode] || mode, ""),
     ...data.checks.map((k) => coreRow(k.ok ? "green" : "amber", k.name, k.ok ? "OK" : "Needs setup", k.ok ? "ok" : "todo", k.ok ? "" : k.hint)),
     coreRow("green", "Deadlines tracked", fmtNum(c.deadlines), ""),
     coreRow("green", "Library items", fmtNum(c.materials), ""));
@@ -220,7 +220,7 @@ async function control(action) {
   refreshState();
 }
 $("btn-start").addEventListener("click", () => control("start"));
-$("btn-stop").addEventListener("click", () => { if (confirm("Stop JARVIS? Alerts and the morning briefing will pause until you start it again.")) control("stop"); });
+$("btn-stop").addEventListener("click", () => { if (confirm("Stop Abel? Alerts and the morning briefing will pause until you start it again.")) control("stop"); });
 $("btn-restart").addEventListener("click", () => control("restart"));
 $("autostart").addEventListener("change", (e) => api("/api/prefs", "POST", { autostart: e.target.checked }));
 
@@ -235,15 +235,16 @@ function addMsg(kind, text, who) {
   chatLog.scrollTop = chatLog.scrollHeight;
   return m;
 }
-history.forEach((m) => addMsg(m.kind, m.text, m.kind === "user" ? who.name : m.kind === "jarvis" ? "J.A.R.V.I.S." : ""));
-if (!history.length) addMsg("progress", `Good day, ${who.address}. How may I help?`);
+/* "jarvis" stays as the stored message kind so chat history saved by older versions still loads */
+history.forEach((m) => addMsg(m.kind, m.text, m.kind === "user" ? "You" : m.kind === "jarvis" ? "Abel" : ""));
+if (!history.length) addMsg("progress", "Ask about deadlines, course material or anything else at school.");
 
 async function sendChat(text) {
   history.push({ kind: "user", text }); persist();
-  addMsg("user", text, who.name);
+  addMsg("user", text, "You");
   $("chat-send").disabled = true;
   $("wave").classList.add("on");
-  const progress = addMsg("progress", `Working on it, ${who.address}.`);
+  const progress = addMsg("progress", "Working on it...");
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: HEADERS, body: JSON.stringify({ text }) });
     if (!r.ok) {
@@ -262,8 +263,8 @@ async function sendChat(text) {
         if (!line.trim()) continue;
         const ev = JSON.parse(line);
         if (ev.type === "progress") progress.textContent = ev.text.slice(-300);
-        else if (ev.type === "final") { progress.remove(); addMsg("jarvis", ev.text, "J.A.R.V.I.S."); history.push({ kind: "jarvis", text: ev.text }); persist(); }
-        else if (ev.type === "error") { progress.remove(); addMsg("error", `My apologies, ${who.address}. ` + ev.text); }
+        else if (ev.type === "final") { progress.remove(); addMsg("jarvis", ev.text, "Abel"); history.push({ kind: "jarvis", text: ev.text }); persist(); }
+        else if (ev.type === "error") { progress.remove(); addMsg("error", ev.text); }
       }
     }
   } catch (e) {
@@ -286,7 +287,7 @@ $("chat-form").addEventListener("submit", (e) => {
 $("chat-new").addEventListener("click", async () => {
   await api("/api/chat/reset", "POST");
   history.length = 0; persist(); chatLog.replaceChildren();
-  addMsg("progress", `A fresh start, ${who.address}. What shall we tackle?`);
+  addMsg("progress", "New conversation started.");
 });
 
 /* ---------- email (read-only; message text is untrusted, so it is only ever shown as plain text) ---------- */
@@ -300,10 +301,10 @@ async function loadInbox() {
   const st = data.state, setup = $("inbox-setup-body");
   const stage = st.stage;
   $("inbox-setup").hidden = stage === "ready"; $("inbox-main").hidden = stage !== "ready";
-  if (stage === "not_set_up") return inboxMessage(setup, "Log in to your school Outlook once and JARVIS can read, search and summarise your email, and warn you about anything important. It never sends, moves or deletes mail.", jobButton("Log in to Outlook email", "login_outlook"));
+  if (stage === "not_set_up") return inboxMessage(setup, "Log in to your school Outlook once and Abel can read, search and summarise your email, and warn you about anything important. It never sends, moves or deletes mail.", jobButton("Log in to Outlook email", "login_outlook"));
   if (stage === "login") return inboxMessage(setup, "The Outlook session expired. Log in again to resume.", jobButton("Log in to Outlook email", "login_outlook"));
-  if (stage === "no_access") return inboxMessage(setup, "You are logged in, but JARVIS could not read the mailbox with any known method. " + (st.message || "") + " Run the access check and send me its output so I can add the right method.", jobButton("Check Outlook email access", "probe_outlook"));
-  if (stage === "waiting") return inboxMessage(setup, "Logged in. JARVIS will fetch your email within 10 minutes of being started. If nothing appears, run the access check.", jobButton("Check Outlook email access", "probe_outlook", false));
+  if (stage === "no_access") return inboxMessage(setup, "You are logged in, but Abel could not read the mailbox with any known method. " + (st.message || "") + " Run the access check and send me its output so I can add the right method.", jobButton("Check Outlook email access", "probe_outlook"));
+  if (stage === "waiting") return inboxMessage(setup, "Logged in. Abel will fetch your email within 10 minutes of being started. If nothing appears, run the access check.", jobButton("Check Outlook email access", "probe_outlook", false));
   $("inbox-stats").textContent = st.count + " stored, " + st.unread + " unread";
   fill($("inbox-list"), ...(data.messages.length ? data.messages.map((m) => {
     const li = el("li", {}, el("button", { class: "mail-item" + (m.is_read ? "" : " unread") + (m.id === inboxSel ? " sel" : ""), type: "button" },
@@ -362,12 +363,12 @@ function loginForm(login) {
   const go = el("button", { class: "btn btn-primary" }, "Send me a code");
   const submit = async () => { go.disabled = true; chatsState.login = await tgCall("start", { phone: phone.value }); loadChats(); };
   go.addEventListener("click", submit); phone.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-  return [el("p", {}, "JARVIS reads your groups as you, the same way the Telegram app does. Enter your phone number and Telegram will send a login code. Nothing is posted and the number is not stored."),
+  return [el("p", {}, "Abel reads your groups as you, the same way the Telegram app does. Enter your phone number and Telegram will send a login code. Nothing is posted and the number is not stored."),
     err, el("div", { class: "setup-form" }, phone, go)];
 }
 function pickForm(state) {
   const chosen = Object.fromEntries(state.chosen.map((g) => [g.id, g]));
-  if (!state.dialogs.length) return [el("p", {}, "JARVIS loads your Telegram groups once it is running. Start JARVIS from the top bar, wait a minute, then come back to this tab."),
+  if (!state.dialogs.length) return [el("p", {}, "Abel loads your Telegram groups once it is running. Start Abel from the top bar, wait a minute, then come back to this tab."),
     el("p", { class: "muted small" }, state.listener === "login_needed" ? "The Telegram reader says it still needs a login." : "")];
   const rows = state.dialogs.map((d) => {
     const c = chosen[d.id];
@@ -385,21 +386,21 @@ function pickForm(state) {
   save.addEventListener("click", async () => {
     const picked = rows.map((r) => r._get()).filter((g) => g.on).map(({ id, label, kind }) => ({ id, label, kind }));
     const newReply = picked.filter((g) => g.kind === "reply" && !(chosen[g.id] && chosen[g.id].kind === "reply"));
-    if (newReply.length && !confirm("Reply mode: JARVIS will post replies in " + newReply.map((g) => '"' + g.label + '"').join(", ") +
+    if (newReply.length && !confirm("Reply mode: Abel will post replies in " + newReply.map((g) => '"' + g.label + '"').join(", ") +
         " automatically, from YOUR Telegram account, with no approval step. People in the group will see them as coming from you. " +
-        "JARVIS limits itself to 20 replies an hour per group and only uses that group's chat, your upcoming deadlines and course material. " +
+        "Abel limits itself to 20 replies an hour per group and only uses that group's chat, your upcoming deadlines and course material. " +
         "Pause everything any time with /pause in Telegram.\n\nTurn on reply mode?")) return;
     const r = await api("/api/chats/groups", "POST", { groups: picked });
-    note.textContent = r.ok ? "Saved. JARVIS starts reading them within a minute." : "Could not save.";
+    note.textContent = r.ok ? "Saved. Abel starts reading them within a minute." : "Could not save.";
     if (r.ok) { chatsEditing = false; chatGroup = null; setTimeout(loadChats, 600); }
   });
-  return [el("p", {}, "Tick the groups JARVIS should read, give each a name, and say what it is. Class and project groups are summarised and checked for dates and deadlines separately."),
+  return [el("p", {}, "Tick the groups Abel should read, give each a name, and say what it is. Class and project groups are summarised and checked for dates and deadlines separately."),
     el("p", { class: "muted small" }, "Reply groups are read the same way and also answered automatically from your own Telegram account. Use it only where you want that."),
     el("div", { class: "pick-list" }, ...rows), el("div", { class: "btn-row" }, save, note)];
 }
 /* A saved Telegram session file only proves a login was STARTED. What the group reader itself reports decides what to show. */
 function ownAccountStatus(state) {
-  if (state.ops_running === false) return [el("p", {}, "JARVIS is stopped. Press Start at the top: the group reader runs inside JARVIS.")];
+  if (state.ops_running === false) return [el("p", {}, "Abel is stopped. Press Start at the top: the group reader runs inside Abel.")];
   if (state.listener === "login_needed") {
     return [el("p", { class: "form-err" }, "Telegram has not confirmed your login yet (the login may have been started but never finished). Log in again below."),
       ...loginForm(state.login)];
@@ -408,20 +409,20 @@ function ownAccountStatus(state) {
     return [el("p", { class: "form-err" }, "The Telegram reader hit an error" + (state.listener_message ? ": " + state.listener_message : "") + ". It retries every 30 seconds. If this stays, press Restart, and tell me the message if it keeps coming back.")];
   }
   if (state.listener === "listening") return [el("p", {}, "Connected to Telegram. Your groups are loading and will appear here within a minute.")];
-  return [el("p", {}, "Waiting for JARVIS's Telegram reader to connect (up to 30 seconds). If this stays for over a minute, press Restart at the top."),
+  return [el("p", {}, "Waiting for Abel's Telegram reader to connect (up to 30 seconds). If this stays for over a minute, press Restart at the top."),
     el("p", { class: "muted small" }, "Reader status: " + (state.listener || "not reported yet"))];
 }
 function renderChatsSetup(state) {
   $("chats-main").hidden = true; $("chats-setup").hidden = false;
   if (state.stage === "pick") return setupBox("Choose your groups", ...pickForm(state));
   const botSteps = el("ol", { class: "setup-steps" },
-    el("li", {}, "In Telegram, open @BotFather, choose /mybots, pick your JARVIS bot, then Bot Settings, then Group Privacy, and turn it off. (This lets the bot see the group's messages. It still cannot post.)"),
-    el("li", {}, "Add the JARVIS bot to your class group and to your project group as a normal member. You must be the one to add it."),
+    el("li", {}, "In Telegram, open @BotFather, choose /mybots, pick your Abel bot, then Bot Settings, then Group Privacy, and turn it off. (This lets the bot see the group's messages. It still cannot post.)"),
+    el("li", {}, "Add the Abel bot to your class group and to your project group as a normal member. You must be the one to add it."),
     el("li", {}, "Come back to this tab: the groups appear here for you to tick. If you added the bot before turning privacy off, remove it and add it again."));
-  const bot = el("div", { class: "method" }, el("h3", {}, "Option 1: add the JARVIS bot to the group (recommended)"),
+  const bot = el("div", { class: "method" }, el("h3", {}, "Option 1: add the Abel bot to the group (recommended)"),
     el("p", {}, "The bot sits in the group and only listens. It never posts, replies, or answers anyone: commands, mentions and buttons are ignored in groups, even from you, and it leaves a group at once if anyone else adds it. It reads from the moment it joins; it cannot see older messages."), botSteps);
   const own = el("details", { class: "method" }, el("summary", {}, "Option 2: read as yourself (also gets older messages)"),
-    ...(state.telethon === "no_api_keys" ? [el("p", {}, "One-time setup: open my.telegram.org, log in, choose API development tools, create an app, and copy the api_id and api_hash into secrets.env as TELETHON_API_ID and TELETHON_API_HASH. Restart JARVIS, then come back here.")]
+    ...(state.telethon === "no_api_keys" ? [el("p", {}, "One-time setup: open my.telegram.org, log in, choose API development tools, create an app, and copy the api_id and api_hash into secrets.env as TELETHON_API_ID and TELETHON_API_HASH. Restart Abel, then come back here.")]
       : state.telethon === "login" ? loginForm(state.login) : ownAccountStatus(state)));
   setupBox("Connect your group chats", bot, own);
 }
@@ -444,7 +445,7 @@ function renderChatsMain(state) {
   }
   $("chats-note").textContent = reply.length
     ? "Replies in reply groups are posted from your own account. Messages come from other people, so treat links and requests in them with care."
-    : "Read-only. JARVIS reads these groups as you and can never post to them. Messages come from other people, so treat links and requests in them with care.";
+    : "Read-only. Abel reads these groups as you and can never post to them. Messages come from other people, so treat links and requests in them with care.";
   loadChatMessages();
 }
 async function loadChatMessages() {
@@ -596,7 +597,7 @@ function renderCalDay() {
   const evs = eventsOn(calSelected);
   fill($("cal-day-list"), ...(evs.length ? evs.map((e) => {
     const when = e.all_day ? "All day" + (e.end_date !== e.date ? " (until " + e.end_date.slice(8) + "/" + e.end_date.slice(5, 7) + ")" : "") : e.start + (e.end ? " to " + e.end : "");
-    const tag = e.jarvis ? (e.tentative ? "JARVIS deadline, tentative: please double-check" : "JARVIS deadline") : "";
+    const tag = e.jarvis ? (e.tentative ? "Abel deadline, tentative: please double-check" : "Abel deadline") : "";
     return el("li", { class: evClass(e) }, el("b", {}, e.title), el("div", { class: "sub" }, when),
       e.location ? el("div", { class: "sub" }, e.location) : "", tag ? el("div", { class: "sub" }, tag) : "",
       e.link ? el("a", { href: e.link, target: "_blank", rel: "noopener noreferrer" }, "Open in Google Calendar") : "");
@@ -772,8 +773,8 @@ function maybeUpdatePopup(data) {
   if (!(data.ok && (data.behind || data.restart_needed))) { $("update-pop").hidden = true; return; }
   updateSeen = (data.changes || [])[0] + "|" + data.behind + "|" + !!data.restart_needed;
   $("update-pop-text").textContent = data.behind
-    ? "A new version of JARVIS is ready. Please update: it takes about a minute and JARVIS restarts by itself."
-    : "A new version of JARVIS is already on this computer but is not running yet. Please restart to finish updating: it takes about a minute.";
+    ? "A new version of Abel is ready. It takes about a minute to update, and Abel restarts by itself."
+    : "A new version of Abel is already on this computer but is not running yet. Restart to finish updating: it takes about a minute.";
   $("update-pop-apply").textContent = data.behind ? "Update and restart" : "Restart now";
   let snooze = {};
   try { snooze = JSON.parse(localStorage.getItem("jarvis-update-snooze") || "{}"); } catch (e) { /* ignore */ }
@@ -809,7 +810,7 @@ async function waitForRestart() {
     await new Promise((res) => setTimeout(res, 2000));
     try { const r = await fetch("/api/state"); if (r.ok) { location.reload(); return; } } catch (e) { /* still restarting */ }
   }
-  notice("The panel did not come back. Start it again with Open JARVIS.command (Mac) or Open JARVIS.bat (Windows).");
+  notice("The panel did not come back. Start it again from the shortcut you used to open it.");
 }
 checkUpdate();
 setInterval(checkUpdate, 30 * 60 * 1000);
@@ -828,12 +829,12 @@ function renderWizard(err) {
   const back = () => { const b = el("button", { class: "btn btn-quiet" }, "Back"); b.addEventListener("click", () => { wiz.step--; renderWizard(); }); return b; };
   const body = $("wiz-body");
   if (wiz.step === 0) {
-    fill(body, el("p", {}, "This takes about five minutes. JARVIS watches POLITEMall and Teams for you and messages you on Telegram. Everything stays on this computer."),
+    fill(body, el("p", {}, "This takes about five minutes. Abel watches POLITEMall, Teams and your school email, and reminds you on Telegram. Everything stays on this computer."),
       el("p", {}, "You will need: the Telegram app, and your POLITEMall login."),
       el("div", { class: "wiz-actions" }, next("Start", () => { wiz.step = 1; renderWizard(); })));
   } else if (wiz.step === 1) {
     const [l, , input] = wizField("Bot token", { type: "password", autocomplete: "off", placeholder: "123456789:AAH...", value: wiz.token });
-    fill(body, el("p", {}, "JARVIS talks to you through your own private Telegram bot."),
+    fill(body, el("p", {}, "Abel talks to you through your own private Telegram bot."),
       el("ol", {}, el("li", {}, "In Telegram, search for @BotFather and open it."), el("li", {}, "Send /newbot and follow the questions."), el("li", {}, "Copy the token it gives you and paste it below.")),
       l, input, wizErr(err),
       el("div", { class: "wiz-actions" }, back(), next("Check token", async () => {
@@ -860,13 +861,12 @@ function renderWizard(err) {
         wiz.user = user.value.trim(); wiz.pass = pass.value; wiz.step = 4; renderWizard();
       })));
   } else {
-    const [l1, , name] = wizField("What should JARVIS call you?", { type: "text", maxlength: "40", value: wiz.ownerName || "" });
-    const [l2, , addr] = wizField("How should it address you? (Sir, Ma'am, boss, or just your name)", { type: "text", maxlength: "20", value: "Sir" });
-    fill(body, l1, name, l2, addr, wizErr(err),
+    const [l1, , name] = wizField("Your first name", { type: "text", maxlength: "40", value: wiz.ownerName || "" });
+    fill(body, el("p", {}, "Abel uses this name in its messages to you."), l1, name, wizErr(err),
       el("div", { class: "wiz-actions" }, back(), next("Finish setup", async () => {
-        const r = await wizPost("save", { token: wiz.token, owner_id: wiz.ownerId, school_user: wiz.user, school_pass: wiz.pass, school_base: wiz.base, name: name.value, address: addr.value });
+        const r = await wizPost("save", { token: wiz.token, owner_id: wiz.ownerId, school_user: wiz.user, school_pass: wiz.pass, school_base: wiz.base, name: name.value, address: name.value.trim() });
         if (!r.ok) return renderWizard(r.error);
-        fill(body, el("p", {}, "Saved. JARVIS is restarting; this page reloads by itself. Then open Logins & Tools and press Connect everything."));
+        fill(body, el("p", {}, "Saved. Abel is restarting; this page reloads by itself. Then open Logins & Tools and press Connect everything."));
         waitForRestart();
       })));
   }

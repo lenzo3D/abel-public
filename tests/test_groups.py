@@ -176,7 +176,8 @@ async def test_each_group_is_summarised_separately_with_its_own_name(db, env_fil
     put(db, PROJECT, 1, "project chatter")
     await briefing.scheduled_group_summary(s)
     texts = [t for t, _ in s.notifier.messages]
-    assert any(t.startswith("Class summary") for t in texts) and any(t.startswith("Project team summary") for t in texts)
+    assert any(t.startswith("💬 <b>Class · chat summary") for t in texts)
+    assert any(t.startswith("💬 <b>Project team · chat summary") for t in texts)
     (c1, c2) = s.extra["calls"]
     assert "class chatter" in c1[1] and "project chatter" not in c1[1] and 'called "Class"' in c1[0]
     assert "project chatter" in c2[1] and "class chatter" not in c2[1] and "project group" in c2[0]

@@ -34,7 +34,7 @@ def _win(windows: bool | None) -> bool:
 
 # ---------- text shown to the user ----------
 def venv_python(windows: bool | None = None) -> str:
-    """The venv Python as you would type it in a terminal opened in the JARVIS folder."""
+    """The venv Python as you would type it in a terminal opened in the Abel folder."""
     return r".\.venv\Scripts\python.exe" if _win(windows) else ".venv/bin/python"
 
 
@@ -239,7 +239,7 @@ def restart_process(argv: list[str], windows: bool | None = None, execv=os.execv
         execv(argv[0], argv)
 
 
-# ---------- keep the computer awake while JARVIS runs ----------
+# ---------- keep the computer awake while Abel runs ----------
 def set_windows_awake(on: bool, kernel32=None) -> bool:
     """Ask Windows not to sleep (SetThreadExecutionState). It applies to the calling thread, so call it from the
     panel's main thread. Returns False if it could not."""

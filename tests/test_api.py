@@ -55,7 +55,7 @@ async def test_courses_find(client):
 async def test_due_lists_upcoming_and_no_due(client):
     data = await (await client.get("/due", params={"days": "7"})).json()
     assert [d["title"]["text"] for d in data["due"]] == ["Tutorial 55"]
-    assert data["due"][0]["due_sgt"] == "Wed 28 Oct 10:00"
+    assert data["due"][0]["due_sgt"] == "Wed 28 Oct, 10:00"
     assert [d["title"]["text"] for d in data["no_due_date"]] == ["Reflection"]
 
 

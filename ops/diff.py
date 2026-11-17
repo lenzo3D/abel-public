@@ -35,7 +35,7 @@ def _field_diff(old_title: str, old_payload: dict, item: Item) -> dict[str, tupl
 
 def _unseen_courses(db: DB, source: str, items: list[Item]) -> dict[int, list[Item]]:
     """Brightspace courses (by org unit id, not by code) in this sweep that have never been baselined and none of
-    whose items JARVIS already stores -> their items. A course whose code changed, or an old course that just had no
+    whose items Abel already stores -> their items. A course whose code changed, or an old course that just had no
     items, is not new while any of its item ids is already known or it was flagged `baseline:<source>:ou:<ou>`."""
     if source != "brightspace":
         return {}

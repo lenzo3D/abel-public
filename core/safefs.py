@@ -10,7 +10,7 @@ path component is checked with lstat (symlink, junction or other reparse point =
 resolve inside the workspace, and writes go to a temp file in the same directory followed by os.replace.
 That is weaker: between the check and the use another process could swap a directory for a link (a race the
 fd-relative POSIX version cannot lose). It is acceptable because a Windows install is a single-user desktop where
-Claude runs as the same user as JARVIS anyway, so there is no privilege boundary for the link to cross; the
+Claude runs as the same user as Abel anyway, so there is no privilege boundary for the link to cross; the
 checks still stop the ordinary mistakes (a link planted in the workspace, a ../ path). Server deployments are
 Linux and keep the strong version. `USE_PORTABLE` selects the portable version (tests set it to cover it on any OS).
 """

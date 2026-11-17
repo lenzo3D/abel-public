@@ -226,10 +226,10 @@ async def test_first_sweep_is_a_silent_baseline_then_new_mail_alerts_by_importan
     assert s.extra["outlook"].calls[0][1] == mail_jobs.FIRST_LIMIT and s.extra["outlook"].calls[0][0] is None
     await mail_jobs.sweep_outlook(s)
     texts = [t for t, _ in s.notifier.messages]
-    assert len(texts) == 1 and texts[0].startswith("[Urgent] Email from Mr Tan") and "Quiz 2 venue changed" in texts[0]
+    assert len(texts) == 1 and texts[0].startswith("✉️ <b>Important email · Mr Tan</b>") and "Quiz 2 venue changed" in texts[0]
     assert "Now Block L" in texts[0]
     queued = [q["text"] for q in db.get_json_setting("batch_queue", [])]
-    assert any("Email from Ben" in t for t in queued)  # normal mail is batched
+    assert any("Email · Ben" in t for t in queued)  # normal mail is batched
     assert not any("newsletter" in t.lower() for t in queued + texts)  # bulk mail goes only to the morning briefing
     assert any("Weekly newsletter" in q["text"] for q in db.get_json_setting("briefing_queue", []))
     assert MailStore(db).stats()["count"] == 4 and s.extra["outlook"].calls[1][1] == mail_jobs.SWEEP_LIMIT

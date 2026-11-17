@@ -7,6 +7,7 @@ from pathlib import Path
 from core import actions
 from core.actions import ActionNotPending
 from core.text import shown_file_name
+from ops import tg
 from ops.api import find_course
 from ops.format import fmt_dt, parse_iso
 
@@ -14,34 +15,40 @@ TITLES = {"brightspace_submit": "Submit", "brightspace_discussion_post": "Post t
           "teams_send_message": "Send Teams message"}
 
 
-def card(action, ctx: dict) -> tuple[str, list[list[tuple[str, str]]]]:
+def card(action, ctx: dict):
+    """The approval card. Everything on it is shown exactly as it will be sent (escaped, no Markdown conversion)."""
     p = action.params
-    lines = [f"Approval #{action.id}: {TITLES[action.kind]}"]
+    title = f"Approval #{action.id} · {TITLES[action.kind]}"
     if ctx.get("dev"):
-        lines[0] += " (dev: actions disabled)"
+        title += " (dev: actions disabled)"
+    rows: list = []
+    text = None
     if action.kind == "brightspace_submit":
-        lines.append(f"File: {shown_file_name(str(p['file_name']))} ({max(1, p['size'] // 1024)} KB, sha256 {p['sha256'][:12]})")
-        lines.append(f"To: {ctx.get('course', '')} › {ctx.get('target') or 'folder ' + str(p['folder_id'])}")
+        rows.append(f"File: {shown_file_name(str(p['file_name']))} ({max(1, p['size'] // 1024)} KB, sha256 {p['sha256'][:12]})")
+        rows.append(f"To: {ctx.get('course', '')} › {ctx.get('target') or 'folder ' + str(p['folder_id'])}")
         if ctx.get("due"):
-            lines.append(f"Due: {ctx['due']}")
+            rows.append(f"🗓️ Due {ctx['due']}")
         if p.get("comment"):
-            lines.append(f"Comment: {p['comment'][:300]}")
+            rows.append(f"Comment: {p['comment'][:300]}")
     elif action.kind == "brightspace_discussion_post":
         where = ctx.get("target") or f"forum {p['forum_id']} / topic {p['topic_id']}"
-        lines.append(f"Where: {ctx.get('course', '')} › {where}")
-        lines.append(f"Subject: {p.get('subject', '')}")
-        lines.append(f"Text:\n{p['text'][:1500]}")
+        rows.append(f"Where: {ctx.get('course', '')} › {where}")
+        rows.append(tg.Html("Subject: " + tg.b(p.get("subject", ""))))
+        text = p["text"][:1500]
     else:
-        lines.append(f"To: {ctx.get('target') or 'UNKNOWN conversation ' + p['conv_id']}")
-        lines.append(f"Text:\n{p['text'][:1500]}")
+        rows.append(f"To: {ctx.get('target') or 'UNKNOWN conversation ' + p['conv_id']}")
+        text = p["text"][:1500]
+    parts = [tg.card("✋", title, *rows)]
+    if text is not None:
+        parts.append(tg.lines(tg.i("Text, exactly as it will be sent:"), tg.quote(text, expandable=len(text) > 600)))
     if action.summary:
-        lines.append(f"Why: {action.summary[:300]}")
-    lines.append("Expires in 24h.")
+        parts.append(f"Why: {action.summary[:300]}")
+    parts.append(tg.i("Expires in 24h."))
     verb = "Submit" if action.kind == "brightspace_submit" else "Send"
     buttons = [[(verb, f"act:approve:{action.id}"), ("Cancel", f"act:cancel:{action.id}")]]
     if action.kind == "brightspace_submit":
         buttons[0].append(("Preview", f"act:preview:{action.id}"))
-    return "\n".join(lines), buttons
+    return tg.blocks(*parts), buttons
 
 
 class Approvals:
@@ -98,7 +105,7 @@ class Approvals:
         text, buttons = card(a, ctx)
         await self.s.notifier.send(text, buttons)
         return {"status": "awaiting approval", "action_id": a.id,
-                "message": f"Awaiting the user's approval #{a.id} in the JARVIS Ops bot. Check with action_status."}
+                "message": f"Awaiting the user's approval #{a.id} in Abel's Telegram bot. Check with action_status."}
 
     async def _recipient(self, a) -> str | None:
         """Resolve who/where an action goes, so the user sees it before approving."""
@@ -124,18 +131,20 @@ class Approvals:
     # ----- button handlers (Ops bot only) -----
     async def on_approve(self, arg: str) -> str:
         if not self.s.settings.actions_enabled:
-            return "Actions are disabled on this machine (ACTIONS_ENABLED=false). Nothing was sent."
+            return tg.card("⚠️", "Actions are disabled on this machine", "ACTIONS_ENABLED=false. Nothing was sent.")
         try:
             a = actions.approve(self.s.db, int(arg), self.s.clock())
         except ActionNotPending as e:
-            return f"#{arg} not pending: {e}"
+            return tg.card("⚠️", f"#{arg} not pending", str(e))
         result = await actions.execute(self.s, a)
         if "error" in result:
-            return f"#{a.id} failed: {result['error']}"
-        return f"#{a.id} done. Receipt: {json.dumps(result, default=str)[:500]}"
+            return tg.card("⚠️", f"#{a.id} failed", str(result["error"]))
+        return tg.card("✅", f"#{a.id} done", tg.Html("Receipt: " + tg.code(json.dumps(result, default=str)[:500])))
 
     async def on_cancel(self, arg: str) -> str:
-        return f"#{arg} cancelled." if actions.cancel(self.s.db, int(arg), self.s.clock()) else f"#{arg} not pending."
+        if actions.cancel(self.s.db, int(arg), self.s.clock()):
+            return tg.card("✅", f"#{arg} cancelled", "Nothing was sent.")
+        return tg.card("⚠️", f"#{arg} not pending")
 
     async def on_preview(self, arg: str) -> str | None:
         try:
@@ -150,9 +159,10 @@ class Approvals:
     async def pending_text(self) -> str:
         items = actions.list_pending(self.s.db)
         if not items:
-            return "No pending approvals."
-        return "\n".join(f"#{a.id} {TITLES[a.kind]}: {a.summary or shown_file_name(str(a.params.get('file_name', '')))}"[:200]
-                         for a in items)
+            return tg.card("✋", "No pending approvals")
+        return tg.card("✋", f"Pending approvals · {len(items)}", *(
+            tg.Html(f"• {tg.b('#' + str(a.id))} {tg.esc(TITLES[a.kind])}: " + tg.esc(
+                (a.summary or shown_file_name(str(a.params.get('file_name', ''))))[:180])) for a in items))
 
     async def expire_job(self) -> None:
         actions.expire(self.s.db, self.s.clock())

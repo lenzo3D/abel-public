@@ -130,9 +130,9 @@ class OpsSupervisor:
     async def start(self) -> dict:
         async with self._lock:
             if self.managed_running:
-                return {"ok": True, "message": "JARVIS is already running."}
+                return {"ok": True, "message": "Abel is already running."}
             if ops_alive(self.settings):
-                return {"ok": False, "message": "JARVIS is already running outside this panel (for example in a "
+                return {"ok": False, "message": "Abel is already running outside this panel (for example in a "
                                                 "terminal). Stop that one first, or two copies would fight over Telegram."}
             self._rotate_log()
             logfile = open(self.log_path, "ab")
@@ -148,7 +148,7 @@ class OpsSupervisor:
             self.desired = True
             self._keep_awake(self.pid)
             self._ensure_watch()
-            return {"ok": True, "message": "Starting JARVIS."}
+            return {"ok": True, "message": "Starting Abel."}
 
     def _keep_awake(self, pid: int) -> None:
         if hostos.is_windows():
@@ -168,8 +168,8 @@ class OpsSupervisor:
             self.desired = False
             if not self.managed_running:
                 if ops_alive(self.settings):
-                    return {"ok": False, "message": "JARVIS was started outside this panel, so it cannot be stopped here."}
-                return {"ok": True, "message": "JARVIS is not running."}
+                    return {"ok": False, "message": "Abel was started outside this panel, so it cannot be stopped here."}
+                return {"ok": True, "message": "Abel is not running."}
             pid = self.pid
             asked = hostos.terminate_tree(pid)
             # On Windows a polite request fails for a process without a window; then do not wait, just force.
@@ -186,7 +186,7 @@ class OpsSupervisor:
             self.proc = self.pid = None
             if hostos.is_windows():
                 hostos.set_windows_awake(False)
-            return {"ok": True, "message": "JARVIS stopped."}
+            return {"ok": True, "message": "Abel stopped."}
 
     async def restart(self) -> dict:
         out = await self.stop()

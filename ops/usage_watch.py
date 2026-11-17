@@ -5,7 +5,7 @@ import asyncio
 import logging
 
 from core import usagecap
-from ops import persona
+from ops import persona, tg
 
 log = logging.getLogger(__name__)
 RESUME_CALLBACK = "usage:resume"
@@ -70,7 +70,30 @@ async def command(ctx, *args: str) -> str:
             return persona.usage_not_paused(s)
         usagecap.resume(ctx.db, s.tz, now)
         return persona.usage_resumed(s)
-    return usagecap.describe(usagecap.snapshot(ctx.db, s.tz, now))
+    return usage_card(usagecap.snapshot(ctx.db, s.tz, now))
+
+
+def usage_lines(snap: dict) -> list:
+    """One line per capped period, plus the paused / resumed state."""
+    if not snap["enabled"]:
+        return ["No usage cap set (the panel's Usage tab sets one)."]
+    out: list = []
+    for kind in usagecap.PERIODS:
+        p = snap["periods"][kind]
+        if p["limit"]:
+            word = usagecap.PERIOD_WORD[kind]
+            used = tg.b(f"${p['used']:.2f}")
+            out.append(tg.Html(f"{word.capitalize()}: est. {used} of ${p['limit']:.2f} ({p['percent']}%)"))
+    if snap["paused"]:
+        out.append("⏸️ Paused to save usage: class chat summaries, date extraction, project group tasks and group "
+                   "replies (unless kept). Chat, Do it and the briefing still work. /usage resume to carry on.")
+    elif any(p["resumed"] for p in snap["periods"].values()):
+        out.append("Over the cap, but resumed for the rest of the period.")
+    return out
+
+
+def usage_card(snap: dict):
+    return tg.card("📊", "Claude usage", *usage_lines(snap))
 
 
 async def on_resume_button(ctx, _arg: str = "") -> str:

@@ -1,4 +1,4 @@
-"""JARVIS Ops bot: alerts, MFA prompts, approvals and control commands.
+"""Abel's Ops bot: alerts, MFA prompts, approvals and control commands.
 
 Only ALLOWED_TELEGRAM_ID can trigger any handler, and only in a PRIVATE chat with the bot.
 
@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Awaitable, Callable
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.error import BadRequest
 from telegram.ext import (Application, CallbackQueryHandler, ChatMemberHandler, CommandHandler, ContextTypes,
                           MessageHandler, filters)
 
@@ -22,8 +23,8 @@ from core import groups, tg_group
 from core.config import Settings
 from core.db import DB
 from core.models import GroupMessage
-from ops.telegram_out import FILE_LIMIT, chunk
-from ops.textfmt import plain
+from ops import tg
+from ops.telegram_out import FILE_LIMIT
 
 log = logging.getLogger(__name__)
 Buttons = list[list[tuple[str, str]]]
@@ -31,8 +32,32 @@ COMMANDS = ["status", "login", "mute", "unmute", "quiet", "briefing", "pause", "
             "scan", "new", "usage", "tasks"]
 
 
+def _html_refused(e: Exception) -> bool:
+    """Telegram could not read our HTML (or an entity in it). Anything else (not modified, chat gone) is not retried."""
+    msg = str(e).lower()
+    return isinstance(e, BadRequest) and "not modified" not in msg and any(
+        k in msg for k in ("entit", "tag", "parse", "url", "html"))
+
+
+async def send_html(send, part: str, **kw):
+    """Send one HTML part; if Telegram refuses the markup, send the same content as plain text so nothing is lost."""
+    try:
+        return await send(part, parse_mode="HTML", **kw)
+    except BadRequest as e:
+        if not _html_refused(e):
+            raise
+        log.warning("Telegram refused the HTML (%s); sending as plain text", e)
+        return await send(tg.to_plain(part) or "(empty)", **kw)
+
+
+async def reply_html(message, text) -> None:
+    """Reply in the private chat in the same style as Notifier.send (HTML, split safely, plain fallback)."""
+    for part in tg.render(text):
+        await send_html(message.reply_text, part, disable_web_page_preview=True)
+
+
 class Notifier:
-    def __init__(self, bot, chat_id: int, address: str = "Sir"):
+    def __init__(self, bot, chat_id: int, address: str = ""):
         self.bot = bot
         self.chat_id = chat_id
         self.address = address
@@ -44,17 +69,25 @@ class Notifier:
         return InlineKeyboardMarkup([[InlineKeyboardButton(t, callback_data=d) for t, d in row] for row in buttons])
 
     async def send(self, text: str, buttons: Buttons | None = None):
-        parts = chunk(plain(text))
+        """`text` is tg.Html (sent as is) or a plain/Markdown str (escaped and converted by tg.to_html)."""
+        parts = tg.render(text)
         msg = None
         for i, part in enumerate(parts):
             last = i == len(parts) - 1
-            msg = await self.bot.send_message(self.chat_id, part, reply_markup=self._markup(buttons) if last else None,
-                                              disable_web_page_preview=True)
+
+            async def send(t, **kw):
+                return await self.bot.send_message(self.chat_id, t, **kw)
+
+            msg = await send_html(send, part, reply_markup=self._markup(buttons) if last else None,
+                                  disable_web_page_preview=True)
         return msg
 
     async def edit(self, message_id: int, text: str) -> None:
+        async def edit(t, **kw):
+            return await self.bot.edit_message_text(t, chat_id=self.chat_id, message_id=message_id, **kw)
+
         try:
-            await self.bot.edit_message_text(chunk(plain(text))[-1], chat_id=self.chat_id, message_id=message_id)
+            await send_html(edit, tg.render(text)[-1], disable_web_page_preview=True)
         except Exception as e:  # noqa: BLE001 - "message is not modified" etc.
             log.debug("edit failed: %s", e)
 
@@ -62,23 +95,24 @@ class Notifier:
         path = Path(path)
         size = path.stat().st_size
         if size > FILE_LIMIT:
-            await self.send(f"File too large for Telegram ({size // (1024 * 1024)} MB). Saved at {path}")
+            await self.send(tg.card("⚠️", "File too large for Telegram",
+                                    f"{size // (1024 * 1024)} MB. Saved at {path}"))
             return
         with open(path, "rb") as fh:
             await self.bot.send_document(self.chat_id, fh, caption=caption[:1024], filename=path.name)
 
     async def send_bytes(self, name: str, data: bytes, caption: str = "") -> bool:
         if len(data) > FILE_LIMIT:
-            await self.send(f"File too large for Telegram ({len(data) // (1024 * 1024)} MB): {name}. "
-                            "It is saved in the workspace.")
+            await self.send(tg.card("⚠️", "File too large for Telegram",
+                                    f"{name} ({len(data) // (1024 * 1024)} MB). It is saved in the workspace."))
             return False
         await self.bot.send_document(self.chat_id, data, caption=caption[:1024], filename=name)
         return True
 
     async def mfa_prompt(self, site: str, number: str) -> None:
         name = {"brightspace": "POLITEMall", "outlook": "Outlook"}.get(site, "Teams")
-        await self.send(f"{self.address}, {name} requires your authorisation. Please approve {number} in Microsoft "
-                        "Authenticator — I'll wait five minutes.")
+        await self.send(tg.card("🔐", f"{name} sign-in",
+                                tg.Html(f"Approve {tg.b(number)} in Microsoft Authenticator. I'll wait five minutes.")))
 
 
 class CallbackRouter:
@@ -195,8 +229,7 @@ def build_app(settings: Settings, db: DB, hooks: dict, router: CallbackRouter | 
         async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply = await cmds.run(name, list(context.args or []))
             if reply:
-                for part in chunk(plain(reply)):
-                    await update.effective_message.reply_text(part)
+                await reply_html(update.effective_message, reply)
         return handler
 
     for name in COMMANDS:
@@ -213,9 +246,9 @@ def build_app(settings: Settings, db: DB, hooks: dict, router: CallbackRouter | 
             reply = await router.dispatch(q.data or "")
         except Exception as e:  # noqa: BLE001
             log.exception("callback %s failed", q.data)
-            reply = f"Error: {type(e).__name__}: {e}"[:500]
+            reply = tg.card("⚠️", "That button failed", f"{type(e).__name__}: {e}"[:500])
         if reply:
-            await q.message.reply_text(plain(reply))
+            await reply_html(q.message, reply)
 
     app.add_handler(CallbackQueryHandler(on_callback))
 
@@ -224,9 +257,9 @@ def build_app(settings: Settings, db: DB, hooks: dict, router: CallbackRouter | 
         if not ask:
             await update.effective_message.reply_text("Chat isn't set up yet.")
             return
-        reply = await ask(update.effective_message.text or "")
-        if reply:
-            await update.effective_message.reply_text(plain(reply))
+        answer = await ask(update.effective_message.text or "")
+        if answer:
+            await reply_html(update.effective_message, answer)
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & only_me, on_text))
 

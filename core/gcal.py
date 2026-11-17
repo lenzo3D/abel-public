@@ -1,6 +1,6 @@
 """Minimal Google Calendar client for the user's primary calendar (scope: calendar.events only).
 
-One-time setup (the user does this; JARVIS never sees the Google password):
+One-time setup (the user does this; Abel never sees the Google password):
     1. Google Cloud Console → new project → enable "Google Calendar API"
     2. OAuth consent screen (External, add yourself as a test user)
     3. Credentials → Create OAuth client ID → Desktop app → download JSON → save as state/google_client.json

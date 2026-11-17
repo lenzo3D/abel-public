@@ -1,6 +1,7 @@
-"""Clean plain-text output for Telegram: no Markdown symbols, no emoji, tidy bullets.
+"""Clean plain text: no Markdown symbols, no emoji, tidy bullets.
 
-Applied to everything JARVIS sends, so replies stay professional even when the model slips into Markdown.
+Used where the output must be plain: group replies posted into Telegram groups (ops/group_reply.py) and the panel's
+web chat. Messages to the user on Telegram use HTML instead (ops/tg.py).
 """
 from __future__ import annotations
 

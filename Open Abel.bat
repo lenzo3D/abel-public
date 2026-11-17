@@ -1,5 +1,5 @@
 @echo off
-rem Double-click to open the JARVIS control panel. The first time, it installs everything for you.
+rem Double-click to open the Abel control panel. The first time, it installs everything for you.
 setlocal
 cd /d "%~dp0"
 set PYTHONUTF8=1
@@ -13,7 +13,7 @@ if errorlevel 1 goto :start
 start "" "%URL%"
 goto :done
 :start
-echo Starting the JARVIS control panel. Keep this window open, or run scripts\install_startup.ps1 once
+echo Starting the Abel control panel. Keep this window open, or run scripts\install_startup.ps1 once
 echo so it starts by itself at login.
 set JARVIS_UI_OPEN=1
 ".venv\Scripts\python.exe" -m ui

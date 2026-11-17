@@ -314,7 +314,7 @@ class Api:
         except Exception:  # noqa: BLE001 - the row is saved; the 15-minute sync retries
             log.warning("calendar sync after a chat change failed", exc_info=True)
             return "saved; Google Calendar will be updated within 15 minutes"
-        return "done" if rep is not None else "Google Calendar is not connected, so it is only in JARVIS's Calendar tab"
+        return "done" if rep is not None else "Google Calendar is not connected, so it is only in Abel's Calendar tab"
 
     def _event_json(self, d) -> dict:
         when = f"{d.start_utc[:10]} (all day)" if d.all_day else fmt_dt(parse_iso(d.start_utc), self.s.settings.tz)
@@ -337,7 +337,9 @@ class Api:
         my_events.add(self.s.db, d, now)
         google = await self._sync_calendar()
         out = self._event_json(d)
-        await self.s.notifier.send(f"Added to your calendar: {d.title}, {out['when']}.")
+        from ops import tg
+
+        await self.s.notifier.send(tg.card("🗓️", "Added to your calendar", tg.b(d.title), out["when"]))
         return web.json_response({**out, "google_calendar": google})
 
     async def get_my_events(self, req):
@@ -355,7 +357,9 @@ class Api:
             raise web.HTTPBadRequest(text=json.dumps({"error": "unknown key: only events added from chat can be removed (see get_my_events)"}),
                                      content_type="application/json")
         google = await self._sync_calendar()
-        await self.s.notifier.send(f"Removed from your calendar: {d.title}.")
+        from ops import tg
+
+        await self.s.notifier.send(tg.card("🗓️", "Removed from your calendar", tg.esc(d.title)))
         return web.json_response({"removed": key, "google_calendar": google})
 
     # ---------- school email (read-only; text is third-party content) ----------

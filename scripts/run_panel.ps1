@@ -1,4 +1,4 @@
-# Runs the JARVIS control panel and starts it again a few seconds after it quits (used by the login task that
+# Runs the Abel control panel and starts it again a few seconds after it quits (used by the login task that
 # scripts\install_startup.ps1 creates). Output goes to state\logs\panel.out.log and panel.log.
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location -Path $repo

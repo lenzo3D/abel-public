@@ -15,7 +15,7 @@ KIND_LABEL = {"assignment": "Assignment due", "homework": "Homework due", "quiz"
 CONFIRMED_ICON, TENTATIVE_ICON = "\U0001F4CC", "\u2753"  # pushpin: certain; question mark: unverified
 SOURCE_LABEL = {"brightspace": "POLITEMall", "announcement": "POLITEMall announcement",
                 "document": "course document", "teams": "Teams", "group": "Telegram group", "email": "School email",
-                "project": "Project group chat", "mine": "You asked JARVIS to add it"}
+                "project": "Project group chat", "mine": "You asked Abel to add it"}
 
 
 def short_course(name: str, code: str | None) -> str:
@@ -70,12 +70,12 @@ def event_body(d: Deadline, course_name: str, tz) -> dict:
     lines = [f"{kind_label} — {label}",
              f"Source: {SOURCE_LABEL.get(d.source, d.source)}"]
     if d.confidence != "confirmed":
-        lines.append(f"{TENTATIVE_ICON} Tentative: read from text by JARVIS — double-check the date.")
+        lines.append(f"{TENTATIVE_ICON} Tentative: read from text by Abel — double-check the date.")
     if quote:
         lines.append(f"Note: {quote[:300]}" if d.source == "mine" else f'Quote: "{quote[:300]}"')
     if d.source_ref.startswith("http"):
         lines.append(d.source_ref)
-    lines.append("Added by JARVIS — edits to this event may be overwritten; delete it to stop JARVIS re-adding it.")
+    lines.append("Added by Abel — edits to this event may be overwritten; delete it to stop Abel re-adding it.")
     return {
         "summary": summary,
         "description": "\n".join(lines),

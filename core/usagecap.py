@@ -192,7 +192,7 @@ def resume(db, tz, now: datetime) -> str:
     return "resumed"
 
 
-def describe(snap: dict, address: str = "Sir") -> str:
+def describe(snap: dict, address: str = "") -> str:
     """Short factual lines for /status and /usage."""
     if not snap["enabled"]:
         return "Claude usage cap: off"

@@ -1,10 +1,10 @@
-# Deploying JARVIS on a Singapore VPS
+# Deploying Abel on a Singapore VPS
 
 What runs where:
 
 | Unit | User | What |
 |---|---|---|
-| `jarvis-ops` | `jarvis-ops` | The one Telegram bot (J.A.R.V.I.S.), watcher jobs, local API on `/run/jarvis/ops.sock`. Owns secrets, sessions, DB. Runs plain-language messages through `claude -p` as the `jarvis` user via sudo (`CLAUDE_RUN_AS`). |
+| `jarvis-ops` | `jarvis-ops` | The one Telegram bot (Abel), watcher jobs, local API on `/run/jarvis/ops.sock`. Owns secrets, sessions, DB. Runs plain-language messages through `claude -p` as the `jarvis` user via sudo (`CLAUDE_RUN_AS`). |
 | `jarvis-telethon` | `jarvis-ops` | Reads the Telegram class group as you (read-only). |
 
 There is no separate chat service or Telegram channel plugin: the `school` MCP server is passed to Claude inline by
@@ -32,7 +32,7 @@ sudo -u jarvis -H /home/jarvis/.local/bin/claude -p "say ok" --tools ""   # shou
 ```
 
 ## 4. Telegram bot (BotFather)
-- Create one bot (**JARVIS**). Its token goes into `secrets.env` as `OPS_BOT_TOKEN`.
+- Create one bot (**Abel**). Its token goes into `secrets.env` as `OPS_BOT_TOKEN`.
 - Get your numeric Telegram user id (message @userinfobot) → `ALLOWED_TELEGRAM_ID`.
 
 Fill secrets (as root): `nano /opt/politemalljarvis/secrets.env`, including `ACTIONS_ENABLED=true` (server only) and
@@ -74,10 +74,10 @@ sudo -u jarvis curl -s --unix-socket /run/jarvis/ops.sock -X POST http://x/actio
 ```
 
 ## 9. End-to-end checks
-- [ ] (a) A new assignment posted on POLITEMall reaches JARVIS Ops within 20 minutes (daytime).
+- [ ] (a) A new assignment posted on POLITEMall reaches Abel Ops within 20 minutes (daytime).
 - [ ] (b) `rm -rf /opt/politemalljarvis/state/sessions/brightspace` → one 🔐 prompt → tap Log in → approve number → recovers.
-- [ ] (c) Message JARVIS "do my investments tutorial" → a .docx arrives in Telegram.
-- [ ] (d) Ask JARVIS to submit it → Ops shows an approval card; ❌ cancels. Ask again, ✅ → receipt shown.
+- [ ] (c) Message Abel "do my investments tutorial" → a .docx arrives in Telegram.
+- [ ] (d) Ask Abel to submit it → Ops shows an approval card; ❌ cancels. Ask again, ✅ → receipt shown.
 - [ ] (e) The 07:00 briefing arrives.
 - [ ] (f) `/quiet 23-7` in Ops → no 🟡 batches overnight; 🔴 still arrive.
 
@@ -87,25 +87,25 @@ cp secrets.env.example secrets.env   # fill in; leave ACTIONS_ENABLED=false
 .venv/bin/python -m playwright install chromium
 .venv/bin/python -m core.auth login brightspace --show
 .venv/bin/python scripts/probe_brightspace.py
-.venv/bin/python -m ui               # control panel at http://127.0.0.1:8765: start/stop JARVIS, chat, logs
+.venv/bin/python -m ui               # control panel at http://127.0.0.1:8765: start/stop Abel, chat, logs
 scripts/install_launchagent.sh       # once: start the panel automatically at login
 ```
-(`.venv/bin/python -m ops.main` still runs JARVIS directly, but not at the same time as the panel's Start button.)
+(`.venv/bin/python -m ops.main` still runs Abel directly, but not at the same time as the panel's Start button.)
 
 ## Google Calendar (deadlines)
 One-time, on the machine that runs `jarvis-ops` (the Mac during testing):
-1. https://console.cloud.google.com → create a project (e.g. "JARVIS").
+1. https://console.cloud.google.com → create a project (e.g. "Abel").
 2. APIs & Services → Library → enable **Google Calendar API**.
-3. APIs & Services → OAuth consent screen → External → app name "JARVIS", your email → add your Gmail under
+3. APIs & Services → OAuth consent screen → External → app name "Abel", your email → add your Gmail under
    **Test users**.
 4. APIs & Services → Credentials → Create credentials → OAuth client ID → **Desktop app** → Download JSON →
    save it as `state/google_client.json`.
 5. Back on the OAuth consent screen, click **Publish app** (status "In production"). Apps left in "Testing"
    get Google sign-ins that expire every 7 days. Google will show an "unverified app" warning when you sign in —
-   that's expected for your own personal app: Advanced → Go to JARVIS.
+   that's expected for your own personal app: Advanced → Go to Abel.
 6. `.venv/bin/python -m core.gcal login` → approve in the browser → "Google Calendar connected."
    (On the VPS: run it on the Mac, then copy `state/google_token.json` to `/opt/politemalljarvis/state/` as jarvis-ops.)
 
-JARVIS writes only to your primary calendar, only events it created (📝 confirmed POLITEMall due dates,
+Abel writes only to your primary calendar, only events it created (📝 confirmed POLITEMall due dates,
 ❓ tentative dates it read from text). Delete an event and it won't be re-added.
 Optional: set `SEMESTER_START=YYYY-MM-DD` (Monday of week 1) in secrets.env so "Week 9" becomes a date.

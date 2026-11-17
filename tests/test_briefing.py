@@ -41,7 +41,8 @@ async def test_summary_actions_become_red_alerts(db, env_file):
     await briefing.group_summary(s, NOW - timedelta(hours=6))
     texts = [m for m, _ in s.notifier.messages]
     assert any("Project groups formed" in t for t in texts)
-    assert any(t.startswith("[Urgent]") and "Submit peer review form" in t and "tonight 23:59" in t for t in texts)
+    assert any(t.startswith("💬 <b>Class chat · action needed</b>") and "Submit peer review form" in t
+               and "🗓️ Due tonight 23:59" in t for t in texts)
     assert "msg 0" in s.extra["calls"][0][1]
 
 
@@ -62,7 +63,7 @@ async def test_summary_json_in_code_fence(db, env_file):
     s = svc(db, env_file, reply='```json\n{"summary": ["A"], "actions": []}\n```')
     add_msgs(db, 1)
     await briefing.group_summary(s, NOW - timedelta(hours=6))
-    assert s.notifier.messages[0][0] == "Class chat summary\n• A"
+    assert s.notifier.messages[0][0] == "💬 <b>Class chat · chat summary</b>\n\n• A"
 
 
 async def test_threshold_trigger_at_50(db, env_file):
@@ -87,7 +88,7 @@ async def test_briefing_input_lists_no_due_date_section(db, env_file):
     db.conn.execute("insert into due_dates(item_key, due_at) values (?,?)", (nd.stable_id, None))
     db.set_json_setting("briefing_queue", [{"text": "⚪ new calendar thing", "at": NOW.isoformat()}])
     text = await briefing.build_briefing_input(s, NOW)
-    assert "Due in the next 7 days" in text and "INV2101: Tutorial 55 — due" in text and "(submitted)" in text and "Fri 30 Oct" in text
+    assert "Due in the next 7 days" in text and "INV2101: Tutorial 55 — due" in text and "in 3 days, submitted)" in text and "Fri 30 Oct" in text
     assert "No due date" in text and "Reflection" in text
     assert "new calendar thing" in text
 
@@ -95,7 +96,8 @@ async def test_briefing_input_lists_no_due_date_section(db, env_file):
 async def test_briefing_claude_failure_sends_raw(db, env_file):
     s = svc(db, env_file, fail=True)
     await briefing.daily_briefing(s)
-    assert s.notifier.messages[0][0].startswith("Daily briefing")
+    text = s.notifier.messages[0][0]
+    assert text.startswith("☀️ <b>Good morning") and "<b>⏰ Due soon</b>" in text
     assert db.get_json_setting("briefing_queue", None) == []
 
 
@@ -108,3 +110,34 @@ async def test_briefing_due_check_runs_once_per_day(db, env_file):
     db.set_setting("last_briefing_date", "")
     await briefing.maybe_daily_briefing(s)
     assert len(s.notifier.messages) == 1
+
+
+async def test_chat_summary_text_from_the_group_renders_literally(db, env_file):
+    s = svc(db, env_file, reply={"summary": ["Use <b>bold</b> </blockquote> & **this**"], "actions": []})
+    add_msgs(db, 1)
+    await briefing.group_summary(s, NOW - timedelta(hours=6))
+    assert s.notifier.messages[0][0] == ("💬 <b>Class chat · chat summary</b>\n\n"
+                                         "• Use &lt;b&gt;bold&lt;/b&gt; &lt;/blockquote&gt; &amp; **this**")
+
+
+async def test_plain_briefing_fallback_is_sectioned_and_escaped(db, env_file):
+    from ops import persona
+
+    facts = ("Now: Tue 27 Oct, 07:00 (Singapore)\n\nToday's classes and events:\n- none listed\n\n"
+             "Due in the next 7 days:\n- CMBK: Reflection <draft> — due Fri 30 Oct, 23:59 (in 3 days, not submitted)\n\n"
+             "Note: SEMESTER_START is still not set.\n\nClass chat highlights:\n- WISP: Demo moved to Fri")
+    text = persona.plain_briefing(load_settings(env_file), facts)
+    assert text == ("☀️ <b>Good morning.</b>\n<i>Today's briefing as a plain list (Claude is paused to save usage).</i>"
+                    "\n\n<b>🗓️ Today</b>\n• none listed"
+                    "\n\n<b>⏰ Due soon</b>\n• CMBK: Reflection &lt;draft&gt; — due Fri 30 Oct, 23:59 (in 3 days, not submitted)"
+                    "\n\n<b>💬 Class chat</b>\n• WISP: Demo moved to Fri"
+                    "\n\n<i>Note: SEMESTER_START is still not set.</i>")
+
+
+async def test_model_briefing_is_sent_as_markdown_for_the_notifier_to_convert(db, env_file):
+    s = svc(db, env_file, reply="☀️ **Good morning.**\n\n**⏰ Due soon**\n- Tutorial 5")
+    await briefing.daily_briefing(s)
+    text = s.notifier.messages[0][0]
+    from ops import tg
+
+    assert tg.to_html(text) == "☀️ <b>Good morning.</b>\n\n<b>⏰ Due soon</b>\n• Tutorial 5"

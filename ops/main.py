@@ -19,7 +19,7 @@ from core.teams import Teams
 from core.config import load_settings
 from core.db import DB
 from core import usagecap
-from ops import claude_runner, deadline_jobs, persona, project_tasks, reminders, scheduler, usage_watch, watcher
+from ops import claude_runner, deadline_jobs, persona, project_tasks, reminders, scheduler, tg, usage_watch, watcher
 from ops.chat_agent import ChatAgent
 from ops.approvals import Approvals
 from ops.doit import DoIt
@@ -54,41 +54,52 @@ def _wire(s: watcher.Services) -> None:
     sweeps = {"brightspace": watcher.sweep_brightspace, "teams": watcher.sweep_teams}
     s.extra["sweeps"] = sweeps
 
-    async def status() -> str:
-        lines = ["JARVIS status"]
-        for row in db.conn.execute("select * from source_health order by source"):
-            last = fmt_dt(datetime.fromisoformat(row["last_ok"]), s.settings.tz) if row["last_ok"] else "never"
-            lines.append(f"• {row['source']}: last ok {last}, failures in a row {row['consecutive_failures']}")
-        for site in ("brightspace", "teams", "outlook"):
-            if db.get_setting(f"auth_prompted:{site}") == "1":
-                lines.append(f"• {site}: needs login (/login {site})")
+    async def status():
+        tz = s.settings.tz
+        rows = {row["source"]: row for row in db.conn.execute("select * from source_health order by source")}
+        src = []
+        for source in sorted(set(rows) | {x for x in ("brightspace", "teams", "outlook")
+                                         if db.get_setting(f"auth_prompted:{x}") == "1"}):
+            row, name = rows.get(source), watcher.SOURCE_NAMES.get(source, source)
+            last = fmt_dt(datetime.fromisoformat(row["last_ok"]), tz) if row and row["last_ok"] else "never"
+            fails = row["consecutive_failures"] if row else 0
+            if db.get_setting(f"auth_prompted:{source}") == "1":
+                src.append(tg.Html(f"⚠️ {tg.b(name)} · needs login ({tg.code('/login ' + source)})"))
+            elif fails:
+                src.append(tg.Html(f"⚠️ {tg.b(name)} · {fails} failure(s) in a row · last ok {tg.esc(last)}"))
+            else:
+                src.append(tg.Html(f"✅ {tg.b(name)} · last ok {tg.esc(last)}"))
         pending = db.conn.execute("select count(*) from pending_actions where status='pending'").fetchone()[0]
-        lines.append(f"• pending approvals: {pending}")
-        lines.append(f"• paused: {'yes' if db.get_setting('paused') == '1' else 'no'}; "
-                     f"quiet: {db.get_setting('quiet') or 'off'}; muted: {', '.join(db.get_json_setting('muted', [])) or 'none'}")
-        lines.append("• " + usagecap.describe(usagecap.snapshot(db, s.settings.tz, s.clock())))
-        return "\n".join(lines)
+        muted = ", ".join(db.get_json_setting("muted", [])) or "none"
+        alerts = "paused (/resume)" if db.get_setting("paused") == "1" else "on"
+        settings = tg.lines(f"Alerts: {alerts} · Quiet hours: {db.get_setting('quiet') or 'off'} · Muted: {muted}",
+                            f"Pending approvals: {pending}")
+        usage = tg.lines(*usage_watch.usage_lines(usagecap.snapshot(db, tz, s.clock())))
+        return tg.blocks(tg.b("Abel status"), tg.lines(*src) if src else "No checks have run yet.", settings,
+                         tg.Html("📊 " + usage))
 
     async def sweep() -> str:
         total = 0
         for fn in sweeps.values():
             total += len(await fn(s) or [])
-        return f"Sweep done: {total} change(s)."
+        return tg.card("✅", "Sweep done", f"{total} change(s).")
 
     async def login(site: str) -> str:
         async def run():
             try:
                 await s.sessions.login(site)
                 db.set_setting(f"auth_prompted:{site}", "0")
-                await s.notifier.send(f"Logged in to {watcher.SOURCE_NAMES.get(site, site)}.")
+                await s.notifier.send(tg.card("✅", f"Logged in to {watcher.SOURCE_NAMES.get(site, site)}"))
             except AuthRequired as e:
-                await s.notifier.send(f"Login failed: {e}", [[("Try again", f"login:retry:{site}")]])
+                await s.notifier.send(tg.card("⚠️", "Login failed", str(e)[:400]),
+                                      [[("Try again", f"login:retry:{site}")]])
             except Exception as e:  # noqa: BLE001
                 log.exception("login crashed")
-                await s.notifier.send(f"Login error: {type(e).__name__}: {e}"[:500])
+                await s.notifier.send(tg.card("⚠️", "Login error", f"{type(e).__name__}: {e}"[:400]))
 
         asyncio.get_running_loop().create_task(run())
-        return f"Starting {watcher.SOURCE_NAMES.get(site, site)} login… watch for the Authenticator number."
+        return tg.card("🔐", f"Starting {watcher.SOURCE_NAMES.get(site, site)} login",
+                       "Watch for the Authenticator number.")
 
     async def usage(*args: str) -> str:
         return await usage_watch.command(s, *args)
@@ -124,14 +135,15 @@ def _wire(s: watcher.Services) -> None:
             try:
                 await s.notifier.send(await deadline_jobs.scan_command(s))
             except AuthRequired:
-                await s.notifier.send("POLITEMall login needed before scanning.",
+                await s.notifier.send(tg.card("⚠️", "POLITEMall login needed before scanning"),
                                       [[("Log in now", "login:retry:brightspace")]])
             except Exception as e:  # noqa: BLE001
                 log.exception("scan failed")
-                await s.notifier.send(f"Scan failed: {type(e).__name__}: {e}"[:500])
+                await s.notifier.send(tg.card("⚠️", "Scan failed", f"{type(e).__name__}: {e}"[:400]))
 
         asyncio.get_running_loop().create_task(run())
-        return "Reading all your current course material… this can take a few minutes for the first scan."
+        return tg.card("🔎", "Reading all your current course material",
+                       "This can take a few minutes for the first scan.")
 
     chat = ChatAgent(s)
     s.extra["chat"] = chat

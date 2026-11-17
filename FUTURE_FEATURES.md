@@ -8,7 +8,7 @@ Hard rules that apply to every feature (from `docs/DEVELOPER_NOTES.md`):
   Telegram, one action at a time. No exceptions.
 - Text written by other people (course pages, chats, email) is data, never instructions.
 - The user signs in themselves. Secrets are never printed.
-- In group chats JARVIS only reads, except in a group the user has marked Reply (opt-in, per group). There it posts
+- In group chats Abel only reads, except in a group the user has marked Reply (opt-in, per group). There it posts
   from the user's own account, limited and with the model's tools off. The Ops bot never posts in any group.
 
 ---
@@ -23,7 +23,7 @@ blocks in the free slots of the day. Optionally adds the blocks to Google Calend
 **Builds on:** the morning briefing, deadlines, Google Calendar view (`ui/calendar.py`), email, project tasks (shipped).
 
 **Rough scope:** a free-slot finder over the calendar; a priority order (due soonest, biggest, not yet submitted);
-a calendar write path limited to events JARVIS created itself, behind an Approve card; a panel Plan tab.
+a calendar write path limited to events Abel created itself, behind an Approve card; a panel Plan tab.
 
 **Open questions:** preferred study hours, how long a block should be, whether to plan the weekend.
 
@@ -34,7 +34,7 @@ a calendar write path limited to events JARVIS created itself, behind an Approve
 **Status:** no longer waiting on Outlook reading (it works, see `docs/DEVELOPER_NOTES.md`). The Outlook token was
 seen to carry the Mail.Send scope, but sending has not been tried or verified.
 
-**What:** For important email, JARVIS writes a suggested reply for the user to review. Sending always needs a tap on
+**What:** For important email, Abel writes a suggested reply for the user to review. Sending always needs a tap on
 the Approve card in Telegram. It also groups mail by course and highlights anything that needs an answer.
 
 **Builds on:** the email store and classification (`core/mail.py`, `ops/mail_jobs.py`), the approvals flow
@@ -64,7 +64,7 @@ table, a panel Grades tab, a "what do I need to get an A?" tool for the agent.
 ## 4. Exam prep from course material
 
 **What:** For a chosen course and weeks, produce a summary, practice questions with answers, and flashcards from the
-lecture notes and tutorials JARVIS has already indexed.
+lecture notes and tutorials Abel has already indexed.
 
 **Builds on:** the course library (`core/library.py`, `search_material`), the Claude chat agent.
 
@@ -102,7 +102,7 @@ travels from. Warn when a class is cancelled or the room changes (from email and
 
 **Status:** parked on purpose. Run locally for now.
 
-**What:** Run JARVIS 24/7 on a Singapore server. The deploy files, the one-bot setup and the isolation checks are
+**What:** Run Abel 24/7 on a Singapore server. The deploy files, the one-bot setup and the isolation checks are
 written (`deploy/`), but have never been run on a real server.
 
 **Before doing it:** the skills path in `ops/chat_agent.py` uses the Ops user's home, not the Claude user's; the
@@ -122,6 +122,6 @@ None known.
 ## Not planned
 
 - **Reading WhatsApp groups.** There is no official way to read them, and automating WhatsApp Web can get the number
-  banned. Use Telegram for group chats that JARVIS should read.
+  banned. Use Telegram for group chats that Abel should read.
 - **Letting anyone in a group give the bot commands.** The bot never obeys group members. Reply groups only produce
   replies; they cannot run actions, change settings or reveal private data.

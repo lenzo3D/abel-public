@@ -1,4 +1,4 @@
-"""Check that this JARVIS install is healthy:  .venv/bin/python scripts/doctor.py   (Windows: .venv\\Scripts\\python.exe)
+"""Check that this Abel install is healthy:  .venv/bin/python scripts/doctor.py   (Windows: .venv\\Scripts\\python.exe)
 
 Prints one line per check and what to do about anything that fails. Never prints secret values.
 """
@@ -63,7 +63,7 @@ def check_config():
 def check_permissions():
     path = env_path()
     if hostos.is_windows():  # Windows has no 0600 mode; access follows the folder's permissions
-        return True, "secrets.env (Windows: keep JARVIS inside your own user folder so others cannot read it)", ""
+        return True, "secrets.env (Windows: keep Abel inside your own user folder so others cannot read it)", ""
     if not path.exists():
         return True, "secrets.env is private", ""
     return hostos.secrets_mode_is_private(path), "secrets.env is private to you", f"Run: chmod 600 {path}"
@@ -84,7 +84,7 @@ def check_port():
     with socket.socket() as s:
         s.settimeout(0.5)
         busy = s.connect_ex(("127.0.0.1", 8765)) == 0
-    return True, "Panel port 8765 " + ("(JARVIS panel already running)" if busy else "(free)"), ""
+    return True, "Panel port 8765 " + ("(Abel panel already running)" if busy else "(free)"), ""
 
 
 CHECKS = [check_python, check_deps, check_chromium, check_claude, check_config, check_permissions, check_run_as, check_port]

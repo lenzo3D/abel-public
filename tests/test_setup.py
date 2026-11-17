@@ -82,7 +82,7 @@ def test_save_validates_then_writes(tmp_path):
     assert setup.save(p, {**good, "school_user": "a\nB=1"})["ok"] is False and not p.exists()
     assert setup.save(p, good) == {"ok": True}
     s = load_settings(p)
-    assert (s.ops_bot_token, s.allowed_telegram_id, s.politemall_user, s.user_name, s.address_as) == (TOKEN, 77, "s123", "Aisha", "Sir")
+    assert (s.ops_bot_token, s.allowed_telegram_id, s.politemall_user, s.user_name, s.address_as) == (TOKEN, 77, "s123", "Aisha", "Aisha")
     assert s.politemall_base == "https://politemall.polite.edu.sg"
 
 

@@ -1,6 +1,6 @@
 # Security
 
-JARVIS runs on your own computer and holds your school login, so treat the folder like a password manager.
+Abel runs on your own computer and holds your school login, so treat the folder like a password manager.
 
 ## What is stored, and where
 
@@ -11,7 +11,7 @@ JARVIS runs on your own computer and holds your school login, so treat the folde
 | Downloaded course files | `workspace/` | Ignored by git |
 
 Never commit, share or paste `secrets.env` or anything in `state/`. If you think they leaked: revoke the bot with
-@BotFather (`/revoke`), change your POLITEMall password, and remove JARVIS from your Google and Microsoft account
+@BotFather (`/revoke`), change your POLITEMall password, and remove Abel from your Google and Microsoft account
 permissions.
 
 ## How it is locked down
@@ -21,14 +21,14 @@ permissions.
 - Only your Telegram account (found during setup) can use the bot. Messages from anyone else are ignored, and the bot
   leaves any group that someone else adds it to.
 - In group chats the bot only reads. It does not reply and does not accept commands.
-- The one exception is a group you mark **Reply**. JARVIS then posts replies there from your own Telegram account, with no
+- The one exception is a group you mark **Reply**. Abel then posts replies there from your own Telegram account, with no
   approval step. Because anyone in the group can write text that reaches it, the model runs with all tools off and sees
   only that group's recent chat, your upcoming deadlines and matching course material, never email, other chats or
   secrets. It posts at most 20 replies an hour and 100 a day per group, never replies to its own account or to bots, and
-  `/pause` stops it. Leave groups on Class, Project or Other and JARVIS never posts.
+  `/pause` stops it. Leave groups on Class, Project or Other and Abel never posts.
 - Anything that submits, sends or posts needs your tap on an Approve button, one action at a time.
 - Text from course pages, group chats and email is passed to the AI as data and never obeyed as instructions.
-- You sign in yourself. JARVIS never asks for your phone approvals or one-time codes except to show them to you.
+- You sign in yourself. Abel never asks for your phone approvals or one-time codes except to show them to you.
 
 ## Reporting a problem
 

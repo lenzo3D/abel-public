@@ -169,7 +169,7 @@ def test_messages_search_and_access_limits(settings):
 def test_connections_row_for_telegram(settings):
     db = db_with_groups(settings)
     row = {c["id"]: c for c in data.connections(settings, "running")}["telegram"]
-    assert row["state"] == "unconfigured" and row["goto"] == "chats" and "JARVIS bot" in row["detail"]
+    assert row["state"] == "unconfigured" and row["goto"] == "chats" and "Abel bot" in row["detail"]
     groups.add_bot_group(db, PROJECT, "FYP Team")
     assert {c["id"]: c for c in data.connections(settings, "running")}["telegram"]["state"] == "pick"
     groups.save(db, [{"id": PROJECT, "label": "Project", "kind": "project"}, {"id": CLASS, "label": "Class", "kind": "class"}])

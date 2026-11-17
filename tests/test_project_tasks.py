@@ -428,12 +428,12 @@ async def test_weekly_digest_content(db, env_file):
     (text, _), = s.notifier.messages
     assert text.index("This week") < text.index("Overdue") < text.index("Decided")
     week = text.split("This week")[1].split("Overdue")[0]
-    assert week.index("You:") < week.index("Ben Tan:")  # the user first
-    assert "- Market section, Thu 05 Nov" in week and "- Survey, Fri 06 Nov" in week
-    assert "Group:" in week and "- Demo, Tue 03 Nov 15:00" in week and "Far future" not in text
-    assert "- Ben Tan: Slides, was due Fri 30 Oct" in text
-    assert "- Use Figma for the mockups" in text and "1 open item(s) have no date yet" in text
-    assert text.startswith("FYP Team:") and "Sir" in text
+    assert week.index("<i>You</i>") < week.index("<i>Ben Tan</i>")  # the user first
+    assert "• Market section · Thu 05 Nov" in week and "• Survey · Fri 06 Nov" in week
+    assert "<i>Group</i>" in week and "• Demo · Tue 03 Nov 15:00" in week and "Far future" not in text
+    assert "• Ben Tan: Slides · was due Fri 30 Oct" in text
+    assert "• Use Figma for the mockups" in text and "1 open item(s) have no date yet" in text
+    assert text.startswith("👥 <b>FYP Team · where the project stands</b>") and "Sir" not in text
 
 
 async def test_digest_goes_out_once_on_sunday_evening_only(db, env_file):
@@ -486,7 +486,7 @@ async def test_tasks_command_matches_group_and_explains_when_none(db, env_file):
     text = await project_tasks.tasks_command(s)
     assert "FYP Team" in text and "Market section" in text
     assert "Market section" in await project_tasks.tasks_command(s, "fyp")
-    assert "no project group matching" in await project_tasks.tasks_command(s, "nope")
+    assert "No project group matches" in await project_tasks.tasks_command(s, "nope")
     groups.save(db, [{"id": CLASS, "label": "Class", "kind": "class"}])
     assert "set the group's type to Project" in await project_tasks.tasks_command(s)
 

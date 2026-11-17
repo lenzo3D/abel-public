@@ -8,7 +8,7 @@ async def test_build_services_wires_hooks(env_file, monkeypatch):
     s = build_services()
     assert {"status", "sweep", "login"} <= set(s.extra["hooks"])
     text = await s.extra["hooks"]["status"]()
-    assert "JARVIS status" in text and "pending approvals: 0" in text
+    assert "<b>Abel status</b>" in text and "Pending approvals: 0" in text
 
 
 async def test_build_services_wires_approvals(env_file, monkeypatch):
@@ -17,7 +17,7 @@ async def test_build_services_wires_approvals(env_file, monkeypatch):
     router = s.extra["router"]
     assert {"act:approve", "act:cancel", "act:preview", "login:retry", "mute", "doit", "dl"} <= set(router._routes)
     assert s.extra["propose"] and s.extra["action_status"]
-    assert await s.extra["hooks"]["pending"]() == "No pending approvals."
+    assert await s.extra["hooks"]["pending"]() == "✋ <b>No pending approvals</b>"
 
 
 async def test_build_services_wires_deadline_hooks(env_file, monkeypatch):
@@ -41,7 +41,7 @@ async def test_chat_hooks_wired(env_file, monkeypatch):
     s.extra["chat"].ctx.notifier = __import__("tests.fakes", fromlist=["FakeNotifier"]).FakeNotifier()
     assert await s.extra["hooks"]["ask"]("q1") is None
     await asyncio.sleep(0)
-    assert "still working" in await s.extra["hooks"]["ask"]("q2")
+    assert "Still working" in await s.extra["hooks"]["ask"]("q2")
     gate.set()
     await s.extra["chat"].wait()
-    assert "fresh" in await s.extra["hooks"]["new"]()
+    assert "New conversation" in await s.extra["hooks"]["new"]()

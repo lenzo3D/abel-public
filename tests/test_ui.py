@@ -62,8 +62,11 @@ async def test_index_and_static_are_served(settings):
     c = await client(settings, supervisor(settings))
     try:
         r = await c.get("/", headers={"Host": H["Host"]})
-        assert r.status == 200 and "J.A.R.V.I.S. Command Center" in await r.text()
+        assert r.status == 200 and "<title>Abel</title>" in await r.text()
         assert (await c.get("/static/app.js", headers={"Host": H["Host"]})).status == 200
+        for svg in ("/static/favicon.svg", "/static/logo.svg"):
+            r = await c.get(svg, headers={"Host": H["Host"]})
+            assert r.status == 200 and r.content_type == "image/svg+xml", svg
     finally:
         await c.close()
 
@@ -74,7 +77,7 @@ async def test_start_stop_lifecycle_and_log(settings):
         assert sup.info()["mode"] == "stopped"
         res = await sup.start()
         assert res["ok"] and sup.managed_running and sup.info()["pid"]
-        assert (await sup.start())["message"] == "JARVIS is already running."
+        assert (await sup.start())["message"] == "Abel is already running."
         assert sup.mode() in ("starting", "unresponsive")  # no ops socket in this test
         assert (await sup.stop())["ok"] and not sup.managed_running and sup.info()["mode"] == "stopped"
         assert not sup.pid_path.exists()
@@ -133,7 +136,7 @@ async def test_ops_endpoints_and_prefs(settings):
         state = await (await c.get("/api/state", headers=H)).json()
         assert state["ops"]["pid"] and "checks" in state and state["ops"]["autostart"] is True
         assert isinstance(state["version"], str) and state["version"]
-        assert state["identity"]["address"] == "Sir" and "name" in state["identity"]
+        assert state["identity"]["address"] != "Sir" and "name" in state["identity"]
         await c.post("/api/prefs", headers=H, data=json.dumps({"autostart": False}))
         assert sup.info()["autostart"] is False
         assert (await c.post("/api/ops/stop", headers=H)).status == 200

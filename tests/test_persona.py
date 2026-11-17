@@ -1,30 +1,47 @@
 from ops.claude_runner import load_prompt
 
 
-def test_chat_agent_persona(env_file):
+def test_chat_agent_persona_is_abel_and_plain(env_file):
+    import dataclasses
+
     from core.config import load_settings
     from ops import persona
     s = load_settings(env_file)
     rules = persona.rules(s)
-    assert "Sir" in rules and "J.A.R.V.I.S." in rules and "British" in rules
+    assert "You are Abel" in rules and "J.A.R.V.I.S." not in rules and "butler" in rules  # only as a "no butler" rule
+    assert '"Sir"' in rules and "never a title" not in rules  # no name known: just the no-titles rule
+    s = dataclasses.replace(s, address_as="", user_name="Aisha Tan")
+    assert persona.address(s) == "Aisha" and '"Aisha"' in persona.rules(s)
+    assert persona.fields(s)["user"] == "Aisha Tan"
+
+
+def test_old_honorifics_are_ignored_but_a_chosen_name_is_used(env_file):
     import dataclasses
-    s = dataclasses.replace(s, address_as="Boss", user_name="Aisha")
-    assert "Boss" in persona.rules(s) and "Sir" not in persona.rules(s)
-    assert persona.fields(s)["user"] == "Aisha"
 
-
-def test_briefing_and_summary_persona(env_file):
     from core.config import load_settings
     from ops import persona
-    f = persona.fields(load_settings(env_file))
-    b = load_prompt("briefing", **f)
-    assert "Good morning, Sir" in b and "{{" not in b
-    g = load_prompt("group_summary", group="G", kind="class", **f)
-    assert "Sir" in g and "{{address}}" not in g
+    s = dataclasses.replace(load_settings(env_file), user_name="Jake Loh")
+    for old in ("Sir", "sir", "Madam", "Boss"):
+        assert persona.address(dataclasses.replace(s, address_as=old)) == "Jake"
+    assert persona.address(dataclasses.replace(s, address_as="JL")) == "JL"
+    assert persona.named(dataclasses.replace(s, user_name="", address_as=""), "Good morning") == "Good morning."
 
 
-async def test_mfa_prompt_addresses_sir():
+def test_briefing_and_summary_prompts_are_plain(env_file):
+    import dataclasses
+
+    from core.config import load_settings
+    from ops import persona
+    s = dataclasses.replace(load_settings(env_file), user_name="Jake Loh")
+    b = load_prompt("briefing", **persona.fields(s))
+    assert "Good morning, Jake" in b and "{{" not in b and "J.A.R.V.I.S." not in b and "Sir" in b  # "no titles such as Sir"
+    g = load_prompt("group_summary", group="G", kind="class", **persona.fields(s))
+    assert "J.A.R.V.I.S." not in g and "{{" not in g
+
+
+async def test_mfa_prompt_is_plain():
     from types import SimpleNamespace
+
     from ops.bot import Notifier
     sent = []
 
@@ -34,10 +51,7 @@ async def test_mfa_prompt_addresses_sir():
             return SimpleNamespace(message_id=1)
 
     await Notifier(Bot(), 1).mfa_prompt("brightspace", "47")
-    assert "Sir" in sent[0] and "47" in sent[0]
-    sent.clear()
-    await Notifier(Bot(), 1, "Boss").mfa_prompt("brightspace", "47")
-    assert sent[0].startswith("Boss,")
+    assert sent[0].startswith("🔐 <b>POLITEMall sign-in</b>") and "47" in sent[0] and "Sir" not in sent[0]
 
 
 async def test_agent_acknowledgement_and_reset(db, env_file):
@@ -50,13 +64,13 @@ async def test_agent_acknowledgement_and_reset(db, env_file):
                  clock=Clock())
 
     async def runner(prompt, session_id):
-        yield "result", "Done, Sir."
+        yield "result", "Done."
 
     a = ChatAgent(s, runner=runner)
     await a.handle("hi")
     await a.wait()
-    assert "Sir" in s.notifier.messages[0][0]
-    assert "Sir" in a.reset()
+    assert s.notifier.messages[0][0] == "On it."
+    assert "Sir" not in a.reset()
 
 
 def test_semester_start_reminder_in_briefing_facts():
@@ -76,7 +90,7 @@ def test_semester_start_reminder_in_briefing_facts():
     s = Services(settings=load_settings(env), db=db, sessions=None, bs=FakeBS(), notifier=FakeNotifier(),
                  clock=Clock())
     text = asyncio.run(build_briefing_input(s, datetime(2026, 10, 27, 23, 0, tzinfo=timezone.utc)))
-    assert "SEMESTER_START" in text
+    assert "SEMESTER_START" in text and "He asked" not in text
     env.write_text(env.read_text(encoding="utf-8") + "SEMESTER_START=2026-10-19\n", encoding="utf-8")
     s.settings = load_settings(env)
     text = asyncio.run(build_briefing_input(s, datetime(2026, 10, 27, 23, 0, tzinfo=timezone.utc)))

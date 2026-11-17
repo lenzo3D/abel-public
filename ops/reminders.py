@@ -15,9 +15,10 @@ from datetime import datetime, timedelta
 
 from core.auth import AuthRequired
 from core.deadlines import DeadlineStore, is_due
-from ops import policy
+from ops import policy, tg
 from ops.deadline_sources import fresh_cutoff
 from ops.format import fmt_dt, parse_iso
+from ops.tg import Html
 
 log = logging.getLogger(__name__)
 due_thresholds = [(timedelta(days=3), "3 days"), (timedelta(days=1), "1 day"), (timedelta(hours=6), "6 hours"),
@@ -95,19 +96,39 @@ def _buttons(key: str, left: timedelta) -> list[list[tuple[str, str]]]:
     return rows
 
 
-async def _send_confirmed_note(ctx, item, due) -> None:
-    await ctx.notifier.send(f"Submission confirmed: {item['course_code']}: \"{item['title']}\" "
-                            f"(due {fmt_dt(due, ctx.settings.tz)}). No more reminders for it.")
+def _course(ctx, code: str | None) -> str:
+    return tg.course(code, ctx.db.get_json_setting("course_names", {}))
 
 
-def _missed_text(ctx, item, payload: dict, due: datetime, checked: bool | None) -> str:
+def _head(what: str, course: str) -> str:
+    return f"{what} · {course}" if course else what
+
+
+def reminder_text(ctx, course_code: str | None, title: str, moment: datetime, now: datetime, status: str = "",
+                  verb: str = "Due", where: str | None = None) -> Html:
+    """🔴 Due in 2h 59m · CMBK / title / 🗓️ Fri 13 Nov, 14:00 · Not submitted yet. 🔴 inside the urgent window."""
     tz = ctx.settings.tz
-    text = f"Missed: {item['course_code']}: \"{item['title']}\" was due {fmt_dt(due, tz)}. "
-    text += "No submission found." if checked is False else "Could not confirm submission."
+    icon = "🔴" if moment - now <= URGENT else "⏰"
+    label = where if where is not None else _course(ctx, course_code)
+    return tg.card(icon, _head(f"{verb} {tg.until(moment, now, tz)}", label), tg.tidy_title(title),
+                   "🗓️ " + " · ".join(x for x in (fmt_dt(moment, tz), status) if x))
+
+
+async def _send_confirmed_note(ctx, item, due) -> None:
+    await ctx.notifier.send(tg.card("✅", _head("Submission confirmed", _course(ctx, item["course_code"])),
+                                    tg.tidy_title(item["title"]),
+                                    f"🗓️ Due {fmt_dt(due, ctx.settings.tz)} · No more reminders for it"))
+
+
+def _missed_text(ctx, item, payload: dict, due: datetime, checked: bool | None) -> Html:
+    tz = ctx.settings.tz
+    status = "No submission found" if checked is False else "Could not confirm submission"
+    late = ""
     end = parse_iso(payload.get("end_at"))
     if payload.get("due_at") and end and end > due:
-        text += f" The folder stays open until {fmt_dt(end, tz)}, so you can still submit late."
-    return text
+        late = f"The folder stays open until {fmt_dt(end, tz)}, so you can still submit late."
+    return tg.card("⚠️", _head("Missed", _course(ctx, item["course_code"])), tg.tidy_title(item["title"]),
+                   f"🗓️ Was due {fmt_dt(due, tz)} · {status}", late)
 
 
 def _set(db, key: str, **cols) -> None:
@@ -184,11 +205,9 @@ async def _one(ctx, r, now: datetime, force: bool) -> None:
         if left <= NOTE_WINDOW:
             await _send_confirmed_note(ctx, item, due)
         return
-    status = "Could not confirm submission." if checked is None else "Not submitted yet."
-    head = "[Urgent] " if urgent else "Reminder: "
-    await ctx.notifier.send(
-        f"{head}{item['course_code']}: \"{item['title']}\" due {fmt_dt(due, tz)} ({time_left(left)} left). {status}",
-        _buttons(key, left))
+    status = "⚠️ Could not confirm submission" if checked is None else "Not submitted yet"
+    await ctx.notifier.send(reminder_text(ctx, item["course_code"], item["title"], due, now, status),
+                            _buttons(key, left))
     # mark this and every larger window as sent so a late start never sends stale ones
     _set(db, key, reminders_sent_json=json.dumps(reached))
 
@@ -206,7 +225,8 @@ def snooze(ctx, key: str) -> str:
         return "No snooze in the last 30 minutes before the deadline."
     until = min(now + SNOOZE, due - LAST_STRETCH)
     _set(ctx.db, key, snooze_until=until.isoformat())
-    return f"Snoozed until {fmt_dt(until, ctx.settings.tz)}. I will remind you again in the last 30 minutes at the latest."
+    return tg.card("⏰", f"Snoozed until {fmt_dt(until, ctx.settings.tz)}",
+                   "I will remind you again in the last 30 minutes at the latest.")
 
 
 def submitted_elsewhere(ctx, key: str) -> str:
@@ -214,30 +234,63 @@ def submitted_elsewhere(ctx, key: str) -> str:
     if not ctx.db.conn.execute("select 1 from due_dates where item_key=?", (key,)).fetchone():
         return "That deadline was not found."
     _set(ctx.db, key, user_confirmed=1)
-    return ("Noted: marked as submitted elsewhere, so no more reminders. /deadlines will still show that POLITEMall "
-            "has not confirmed it.")
+    return tg.card("✅", "Marked as submitted elsewhere", "No more reminders for it. /deadlines will still show that "
+                   "POLITEMall has not confirmed it.")
 
 
 # ---------------------------------------------------------------- other confirmed deadlines (quizzes, tests)
 
+def _twin_key(d, moment: datetime) -> tuple:
+    """Two calendar entries for the same thing: same course, same title (any case), same moment."""
+    return ((d.course_code or "").upper(), " ".join((d.title or "").split()).casefold(), moment.isoformat())
+
+
+def _moment(d) -> datetime | None:
+    return parse_iso(d.end_utc if d.end_utc and is_due(d.kind, d.as_event) else d.start_utc)
+
+
 async def run_deadline_reminders(ctx, force: bool = False) -> None:
     """1 day and 3 hours before confirmed deadlines that are not Brightspace dropboxes (those have the full ladder
-    above). All-day entries are skipped: they have no time to count down to. No buttons, no nagging."""
-    db, now, tz = ctx.db, ctx.clock(), ctx.settings.tz
-    for d in DeadlineStore(db).active():
+    above). All-day entries are skipped: they have no time to count down to. No buttons, no nagging.
+    POLITEMall sometimes lists one deadline twice (two calendar entries, same course, title and time): only one
+    reminder goes out, and the twin is recorded as reminded too."""
+    active = DeadlineStore(ctx.db).active()
+    twins: dict[tuple, list[str]] = {}
+    for d in active:
+        m = _moment(d) if d.confidence == "confirmed" and not d.all_day else None
+        if m:
+            twins.setdefault(_twin_key(d, m), []).append(d.key)
+    sent_now: set[tuple] = set()  # (twin key, label) sent during this run
+    for d in active:
         try:
-            await _deadline_one(ctx, d, force)
+            await _deadline_one(ctx, d, force, twins, sent_now)
         except Exception:  # noqa: BLE001 - one bad row must not block the others (it is retried next run)
             log.exception("deadline reminder failed for %s", d.key)
 
 
-async def _deadline_one(ctx, d, force: bool) -> None:
+def _twin_sent(db, keys: list[str], me: str, moment: datetime, label: str) -> bool:
+    for k in keys:
+        if k == me:
+            continue
+        row = db.conn.execute("select * from deadline_reminders where key=?", (k,)).fetchone()
+        if row and row["moment"] == moment.isoformat() and label in json.loads(row["sent_json"] or "[]"):
+            return True
+    return False
+
+
+def _mark(db, key: str, moment: datetime, reached: list[str]) -> None:
+    db.conn.execute("insert into deadline_reminders values (?,?,?) on conflict(key) do update set "
+                    "moment=excluded.moment, sent_json=excluded.sent_json",
+                    (key, moment.isoformat(), json.dumps(reached)))
+
+
+async def _deadline_one(ctx, d, force: bool, twins: dict | None = None, sent_now: set | None = None) -> None:
     """Marked sent only after the send succeeds: a failed send is retried (at-least-once; a crash between send and
     mark could repeat one message, which is better than losing a reminder)."""
     db, now, tz = ctx.db, ctx.clock(), ctx.settings.tz
     if d.confidence != "confirmed" or d.all_day or d.key.startswith("bs:assignment:"):
         return
-    moment = parse_iso(d.end_utc if d.end_utc and is_due(d.kind, d.as_event) else d.start_utc)
+    moment = _moment(d)
     reached = _due_labels(moment, now, deadline_thresholds) if moment else []
     if not reached:
         return
@@ -245,15 +298,21 @@ async def _deadline_one(ctx, d, force: bool) -> None:
     sent = json.loads(row["sent_json"]) if row and row["moment"] == moment.isoformat() else []
     left = moment - now
     urgent = left <= URGENT
-    if reached[-1] in sent and not (force and urgent):
+    forced = force and urgent
+    if reached[-1] in sent and not forced:
+        return
+    twin = _twin_key(d, moment)
+    sent_now = sent_now if sent_now is not None else set()
+    if (twin, reached[-1]) in sent_now or (
+            not forced and _twin_sent(db, (twins or {}).get(twin, []), d.key, moment, reached[-1])):
+        _mark(db, d.key, moment, reached)  # its twin already reminded about this moment
         return
     if not urgent and _blocked_by_policy(db, d.course_code, now, tz):
         return
-    verb = "due" if is_due(d.kind, d.as_event) else "on"
-    head = "[Urgent] " if urgent else "Reminder: "
-    where = d.course_code or ("Your calendar" if d.source == "mine" else "Course")
-    await ctx.notifier.send(f"{head}{where}: \"{d.title}\" {verb} {fmt_dt(moment, tz)} "
-                            f"({time_left(left)} left).")
-    db.conn.execute("insert into deadline_reminders values (?,?,?) on conflict(key) do update set "
-                    "moment=excluded.moment, sent_json=excluded.sent_json",
-                    (d.key, moment.isoformat(), json.dumps(reached)))
+    due = is_due(d.kind, d.as_event)
+    where = None if d.course_code else ("Your calendar" if d.source == "mine" else
+                                        "Project group" if d.source == "project" else "")
+    await ctx.notifier.send(reminder_text(ctx, d.course_code, d.title, moment, now,
+                                          verb="Due" if due else "Starts", where=where))
+    sent_now.add((twin, reached[-1]))
+    _mark(db, d.key, moment, reached)

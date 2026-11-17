@@ -92,5 +92,5 @@ class Jobs:
                     msg = await on_finish()
                     job["output"] += f"\n{msg}" if msg else ""
                 except Exception as e:  # noqa: BLE001
-                    job["output"] += f"\nCould not restart JARVIS: {type(e).__name__}. Press Start."
+                    job["output"] += f"\nCould not restart Abel: {type(e).__name__}. Press Start."
             job["finished"] = time.time()

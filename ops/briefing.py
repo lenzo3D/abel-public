@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 from core import groups, tg_group, usagecap
 from core.models import Item
-from ops import claude_runner, persona
+from ops import claude_runner, persona, tg
 from ops.diff import Change
 from ops.format import fmt_dt, parse_iso
 from ops.watcher import deliver
@@ -62,13 +62,13 @@ async def group_summary(ctx, since: datetime, chat_id: int | None = None, label:
         return
     ctx.db.set_setting(key, ctx.clock().isoformat())
     data = _parse_json(raw)
-    if data is None:
-        await ctx.notifier.send(f"{label} summary\n" + raw[:3000])
+    if data is None:  # the model's reply is about other people's messages: shown escaped, never as markup
+        await ctx.notifier.send(tg.blocks(tg.card("💬", f"{label} · chat summary"), tg.esc(raw[:3000])))
         _remember_highlights(ctx, label, chat_id, [raw[:500]])
         return
     bullets = [str(b) for b in data.get("summary", []) if str(b).strip()]
     if bullets:
-        await ctx.notifier.send(f"{label} summary\n" + "\n".join(f"• {b}" for b in bullets))
+        await ctx.notifier.send(tg.blocks(tg.card("💬", f"{label} · chat summary"), tg.bullets(bullets)))
     _remember_highlights(ctx, label, chat_id, bullets)
     changes = []
     for a in data.get("actions", []) or []:
@@ -79,7 +79,7 @@ async def group_summary(ctx, since: datetime, chat_id: int | None = None, label:
         key2 = hashlib.sha256(f"{chat_id}|{text}|{due}".encode()).hexdigest()[:16]
         body = f"Deadline: {due}" if due else ""
         changes.append(Change("new", Item("group", f"group:action:{key2}", None, "group_action", text,
-                                          {"body_text": body, "group": label})))
+                                          {"body_text": body, "group": label, "due": str(due) if due else ""})))
     await deliver(ctx, changes)
 
 
@@ -119,6 +119,7 @@ async def build_briefing_input(ctx, now: datetime) -> str:
         ev_lines = [f"- (calendar unavailable: {type(e).__name__})"]
     out += ["", "Today's classes and events:"] + (ev_lines or ["- none listed"])
     due_lines, nodue = [], []
+    names = db.get_json_setting("course_names", {})
     for d in db.conn.execute("select * from due_dates"):
         r = db.conn.execute("select * from items where stable_id=?", (d["item_key"],)).fetchone()
         if not r:
@@ -126,22 +127,29 @@ async def build_briefing_input(ctx, now: datetime) -> str:
         mark = "submitted" if d["submitted"] else "not submitted"
         when = parse_iso(d["due_at"])
         if when is None:
-            nodue.append(f"- {r['course_code']}: {r['title']} ({mark})")
+            nodue.append(f"- {tg.course(r['course_code'], names)}: {r['title']} ({mark})")
         elif now <= when <= now + timedelta(days=7):
-            due_lines.append((when, f"- {r['course_code']}: {r['title']} — due {fmt_dt(when, tz)} ({mark})"))
+            due_lines.append((when, f"- {tg.course(r['course_code'], names)}: {r['title']} — due {fmt_dt(when, tz)} "
+                                    f"({tg.until(when, now, tz)}, {mark})"))
     out += ["", "Due in the next 7 days:"] + ([t for _, t in sorted(due_lines)] or ["- nothing"])
     if nodue:
         out += ["", "No due date:"] + nodue
     queue = db.get_json_setting("briefing_queue", [])
     if queue:
-        out += ["", "New since yesterday:"] + [f"- {q['text']}" for q in queue[-40:]]
+        out += ["", "New since yesterday:"] + [f"- {_one_line(q.get('text'))}" for q in queue[-40:]]
     if not getattr(ctx.settings, "semester_start", None):
-        out += ["", f"Note for {persona.address(ctx.settings)}: SEMESTER_START is still not set in secrets.env, so teaching-plan dates given only as "
-                "'Week N' can't be placed in the calendar. He asked to be reminded."]
+        out += ["", "Note: SEMESTER_START is still not set in secrets.env, so teaching-plan dates given only as "
+                "'Week N' can't be placed in the calendar. You asked to be reminded."]
     highlights = db.get_json_setting("last_group_summary", [])
     if highlights:
         out += ["", "Class chat highlights:"] + [f"- {h}" for h in highlights]
     return "\n".join(out)
+
+
+def _one_line(text) -> str:
+    """Queue entries from older versions were multi-line alerts; the briefing input wants one line each."""
+    parts = [p.strip() for p in str(text or "").splitlines() if p.strip()]
+    return " · ".join(parts)[:300]
 
 
 async def daily_briefing(ctx) -> None:
@@ -156,7 +164,7 @@ async def daily_briefing(ctx) -> None:
                                             model=usagecap.model_for(ctx.db, "briefing"), run_as=ctx.settings.claude_run_as)
         except claude_runner.ClaudeError as e:
             log.warning("briefing formatting failed: %s", e)
-            text = "Daily briefing\n\n" + facts
+            text = persona.plain_briefing(ctx.settings, facts, note="")
     await ctx.notifier.send(text)
     ctx.db.set_json_setting("briefing_queue", [])
     ctx.db.set_setting("last_briefing_date", now.astimezone(ctx.settings.tz).date().isoformat())

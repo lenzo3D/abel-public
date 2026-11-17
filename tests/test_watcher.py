@@ -23,7 +23,7 @@ async def test_new_assignment_sends_red_with_buttons(db, env_file):
     s.bs.assign[1001] = [assignment(5)]
     await sweep_brightspace(s)
     text, buttons = s.notifier.messages[0]
-    assert text.startswith("[Urgent]") and "Tutorial 5" in text
+    assert text.startswith("📌 <b>INV2101 · New assignment</b>") and "Tutorial 5" in text
     datas = [d for row in buttons for _, d in row]
     assert "doit:bs:assignment:1001:5" in datas and "mute:INV2101" in datas
     row = db.conn.execute("select due_at from due_dates where item_key='bs:assignment:1001:5'").fetchone()
@@ -107,7 +107,7 @@ async def test_teams_mention_alert(db, env_file):
                           {"chat_name": "INV2101 › General", "sender": "Mr Tan", "body_text": "Jake please present"})]
     await sweep_teams(s)
     text, _ = s.notifier.messages[0]
-    assert text.startswith("[Urgent]") and "Jake please present" in text
+    assert text.startswith("💬 <b>Teams mention · Mr Tan in INV2101 › General</b>") and "Jake please present" in text
     assert s.teams.since == s.clock() - __import__("datetime").timedelta(hours=6)
 
 
@@ -200,7 +200,7 @@ async def test_failed_red_alert_is_retried(db, env_file):
     assert len(db.get_json_setting("batch_queue", [])) == 1
     await flush_batch(s)  # retries the failed red, then the batch
     texts = [m for m, _ in s.notifier.messages]
-    assert sum("Tutorial" in t for t in texts if t.startswith("[Urgent]")) == 2
+    assert sum("Tutorial" in t for t in texts if t.startswith("📌")) == 2
     assert db.get_json_setting("retry_queue", []) == []
 
 
@@ -224,7 +224,7 @@ async def test_new_course_sends_one_summary_line_not_a_flood(db, env_file):
     n.messages.clear()
     changes = await sweep(items(("OLD1", 1), *[("NEW1", i) for i in range(5)]))
     assert changes == []
-    assert [m for m in [m[0] for m in n.messages] if "New course added" in m] == ["New course added: Brand New Course — 5 items indexed."]
+    assert [m for m in [m[0] for m in n.messages] if "New course added" in m] == ["📚 <b>New course added: Brand New Course</b>\n5 items indexed quietly (no alert for each)."]
     assert len([m[0] for m in n.messages]) == 1
 
 
@@ -250,7 +250,7 @@ async def test_new_course_with_a_failed_fetch_is_not_announced_or_baselined_unti
     assert s.notifier.messages == [] and db.get_item("brightspace", "bs:assignment:1002:1") is None
     s.bs.content_items = real
     await sweep_brightspace(s)
-    assert [m for m, _ in s.notifier.messages] == ["New course added: NEW1002 — 3 items indexed."]
+    assert [m for m, _ in s.notifier.messages] == ["📚 <b>New course added: NEW1002</b>\n3 items indexed quietly (no alert for each)."]
     s.notifier.messages.clear()
     s.bs.assign[1002].append(new_a(4))
     await sweep_brightspace(s)
@@ -278,8 +278,56 @@ async def test_new_course_with_a_tool_switched_off_403_is_still_complete(db, env
     s.bs.grades = grades_off
     await sweep_brightspace(s)
     assert db.get_item("brightspace", "bs:assignment:1002:1") is not None  # baselined, not deferred forever
-    assert [m for m, _ in s.notifier.messages] == ["New course added: NEW1002 — 2 items indexed."]
+    assert [m for m, _ in s.notifier.messages] == ["📚 <b>New course added: NEW1002</b>\n2 items indexed quietly (no alert for each)."]
     s.bs.assign[1002].append(new_a(3))
     await sweep_brightspace(s)
     assert any("Tutorial 3" in m for m, _ in s.notifier.messages)
 
+
+
+# ---------------------------------------------------------------- batched updates (grouped, structured entries)
+
+def _file(i, module="Learning Materials › Topic 5: Stock Valuation", course="INV2101", ou=1001):
+    return Item("brightspace", f"bs:content:{i}", course, "content", f"Article {i} - Stock <tips>",
+                {"ou": ou, "topic_id": i, "type": "File", "module": module})
+
+
+async def test_new_files_are_grouped_by_course_then_module(db, env_file):
+    s = services(db, env_file)
+    db.set_json_setting("course_names", {"INV2101": "INVESTMENTS(731IV_013686)"})
+    await sweep_brightspace(s)
+    s.bs.content[1001] = [_file(i) for i in range(1, 11)] + [_file(20, module="Learning Materials › Topic 6: Bonds")]
+    s.bs.news[1001] = [Item("brightspace", "bs:announcement:1001:1", "INV2101", "announcement", "Class moved",
+                            {"body_text": "We meet in L.5.12 instead."})]
+    await sweep_brightspace(s)
+    await flush_batch(s)
+    (text, buttons), = s.notifier.messages
+    assert text.startswith("<b>Updates · 12 new</b>\n\n")
+    assert ("📄 <b>Investments · 11 new files</b>\n<i>Topic 5: Stock Valuation</i>\n"
+            '• <a href="https://politemall.example/d2l/le/content/1001/viewContent/1/View">Article 1 – Stock &lt;tips&gt;</a>'
+            in text)
+    assert text.count("Topic 5: Stock Valuation") == 1 and text.count("Investments") == 2  # course and module once
+    assert "\n\n<i>Topic 6: Bonds</i>\n• <a href" in text
+    assert "📢 <b>Investments · Announcement</b>\n<b>Class moved</b>\n\nWe meet in L.5.12 instead." in text
+    assert len(buttons) == 8 and buttons[0] == [("⬇️ Article 1 – Stock <tips>", "dl:1001:1")]
+
+
+async def test_old_text_only_queue_entries_still_go_out_escaped(db, env_file):
+    s = services(db, env_file)
+    db.set_json_setting("batch_queue", [{"text": "[Update] INV2101 · New material\nSlides <v2>", "buttons": None}])
+    db.set_json_setting("retry_queue", [{"text": "[Urgent] Old alert & co", "buttons": [["Do it", "doit:x"]]}])
+    await flush_batch(s)
+    texts = [t for t, _ in s.notifier.messages]
+    assert texts[0] == "[Urgent] Old alert & co"  # plain str: Notifier escapes it on the way out
+    assert texts[1] == "[Update] INV2101 · New material\nSlides &lt;v2&gt;"
+    assert db.get_json_setting("batch_queue", None) == [] and db.get_json_setting("retry_queue", None) == []
+
+
+async def test_queued_entries_keep_html_and_facts(db, env_file):
+    s = services(db, env_file)
+    await sweep_brightspace(s)
+    s.bs.content[1001] = [_file(1)]
+    await sweep_brightspace(s)
+    entry, = db.get_json_setting("batch_queue", [])
+    assert entry["html"] is True and entry["text"].startswith("📄 <b>INV2101 · New material</b>")
+    assert entry["data"]["kind"] == "content" and entry["data"]["module"].endswith("Stock Valuation")

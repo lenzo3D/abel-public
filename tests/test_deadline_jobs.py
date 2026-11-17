@@ -30,8 +30,8 @@ async def test_deadlines_text(db, env_file):
     add(db, "b", "Quiz 2", "2026-11-03", conf="tentative", all_day=True)
     add(db, "c", "Far away", "2027-01-30T15:29:00+00:00")
     text = await deadline_jobs.deadlines_text(s, days=14)
-    assert "Fri 30 Oct 23:29 · Investments: Tutorial 5\n" in text + "\n"
-    assert "Tue 03 Nov · Investments: Quiz 2 [tentative]" in text and "Far away" not in text
+    assert "<b>Fri 30 Oct</b>\n• 23:29 · Investments · Tutorial 5\n" in text + "\n"
+    assert "<b>Tue 03 Nov</b>\n• all day · Investments · Quiz 2 · <i>tentative</i>" in text and "Far away" not in text
 
 
 async def test_deadlines_text_marks_submission_state(db, env_file):
@@ -41,8 +41,8 @@ async def test_deadlines_text_marks_submission_state(db, env_file):
     db.conn.execute("insert into due_dates(item_key, due_at, submitted) values ('a', null, 1)")
     db.conn.execute("insert into due_dates(item_key, due_at, user_confirmed) values ('b', null, 1)")
     text = await deadline_jobs.deadlines_text(s, days=14)
-    assert "Tutorial 5 [submitted]" in text
-    assert "Tutorial 6 [you say submitted; POLITEMall has not confirmed it]" in text
+    assert "Tutorial 5 · ✅ submitted" in text
+    assert "Tutorial 6 · <i>you say submitted; POLITEMall has not confirmed it</i>" in text
 
 
 async def test_sync_warns_once_on_calendar_auth(db, env_file):

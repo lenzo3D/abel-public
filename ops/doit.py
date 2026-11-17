@@ -8,7 +8,7 @@ import re
 import time
 
 from core import safefs
-from ops import claude_runner, persona
+from ops import claude_runner, persona, tg
 from ops.format import fmt_dt, parse_iso
 
 log = logging.getLogger(__name__)
@@ -48,14 +48,14 @@ class DoIt:
         self.busy = item["title"]
         prompt = self.build_prompt(item)
         self._task = asyncio.get_running_loop().create_task(self._run(item["title"], prompt))
-        return f"Working on {item['title']}… I'll post progress here."
+        return tg.card("🛠️", f"Working on {item['title']}", "I'll post progress here.")
 
     async def _run(self, title: str, prompt: str) -> None:
         with claude_runner.labelled("do_it"):
             await self._run_labelled(title, prompt)
 
     async def _run_labelled(self, title: str, prompt: str) -> None:
-        msg = await self.s.notifier.send(f"{title}: starting…")
+        msg = await self.s.notifier.send(tg.card("🛠️", title, tg.i("Starting…")))
         last_edit = self.time_fn()
         texts: list[str] = []
         try:
@@ -63,13 +63,13 @@ class DoIt:
                 texts.append(text)
                 now = self.time_fn()
                 if now - last_edit >= EDIT_EVERY and msg is not None:
-                    await self.s.notifier.edit(msg.message_id, f"{title}: …{text[-500:]}")
+                    await self.s.notifier.edit(msg.message_id, tg.blocks(tg.card("🛠️", title), tg.md("…" + text[-500:])))
                     last_edit = now
             final = texts[-1] if texts else "(no output)"
-            await self.s.notifier.send(f"{title} finished.\n\n{final}")
+            await self.s.notifier.send(tg.blocks(tg.card("✅", f"{title} · finished"), tg.md(final)))
         except Exception as e:  # noqa: BLE001
             log.exception("do-it run failed")
-            await self.s.notifier.send(f"{title} failed: {type(e).__name__}: {e}"[:1000])
+            await self.s.notifier.send(tg.card("⚠️", f"{title} · failed", f"{type(e).__name__}: {e}"[:900]))
         finally:
             self.busy = None
 

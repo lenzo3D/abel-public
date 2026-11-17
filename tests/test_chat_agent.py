@@ -80,7 +80,7 @@ async def test_conversation_memory_and_new(db, env_file):
     await a.handle("q2")
     await a.wait()
     assert r.calls[1] == ("q2", "S1")
-    assert "fresh" in a.reset()
+    assert "New conversation" in a.reset()
     await a.handle("q3")
     await a.wait()
     assert r.calls[2] == ("q3", None)
@@ -114,7 +114,7 @@ async def test_busy_reply(db, env_file):
     a = ChatAgent(s, runner=Script([("result", "done")], gate=gate))
     await a.handle("long job")
     await asyncio.sleep(0)
-    assert "still working" in await a.handle("another")
+    assert "Still working" in await a.handle("another")
     gate.set()
     await a.wait()
 

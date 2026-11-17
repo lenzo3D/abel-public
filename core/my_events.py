@@ -1,4 +1,4 @@
-"""Events the user asked JARVIS (in chat) to put on their calendar: meetings, appointments, reminders to self.
+"""Events the user asked Abel (in chat) to put on their calendar: meetings, appointments, reminders to self.
 
 They live in the deadlines table (source "mine", confirmed) so the normal Google Calendar sync adds, updates and
 removes them, and the Calendar tab and reminders see them. Only rows with the "mine:" key can be removed this way.

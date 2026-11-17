@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Make the JARVIS control panel start by itself when you log in to this Mac (and restart if it ever quits).
+# Make the Abel control panel start by itself when you log in to this Mac (and restart if it ever quits).
 #   scripts/install_launchagent.sh            install / update
 #   scripts/install_launchagent.sh --remove   uninstall
 # Then bookmark http://127.0.0.1:8765
@@ -48,4 +48,4 @@ PLISTEOF
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
 launchctl bootstrap "$DOMAIN" "$PLIST"
 launchctl kickstart -k "$DOMAIN/$LABEL"
-echo "Installed. JARVIS panel: http://127.0.0.1:8765  (log: $LOGS/panel.log)"
+echo "Installed. Abel panel: http://127.0.0.1:8765  (log: $LOGS/panel.log)"

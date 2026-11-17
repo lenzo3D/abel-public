@@ -67,7 +67,7 @@ def reply_count(db, chat_id: int) -> int:
 
 def messages(settings, db, chat_id: int, query: str = "", limit: int = 150) -> dict:
     if chat_id not in groups.ids(settings, db):
-        return {"ok": False, "message": "That group is not one JARVIS reads."}
+        return {"ok": False, "message": "That group is not one Abel reads."}
     tz = settings.tz
     limit = max(1, min(limit, 300))
     msgs = tg_group.search(db, query, limit, chat_id)[::-1] if query.strip() else tg_group.latest(db, chat_id, limit)

@@ -73,7 +73,7 @@ async def main() -> int:
     db.init()
     now = datetime.now(timezone.utc)
     if remember_probe(db, report, now):
-        print(f"\nRESULT: JARVIS can read your school email using '{report['strategy']}'. New mail is checked every 10 minutes.")
+        print(f"\nRESULT: Abel can read your school email using '{report['strategy']}'. New mail is checked every 10 minutes.")
         return 0
     print("\nRESULT: none of the known methods could read the mailbox. Copy everything above and send it on;")
     print("it shows exactly which method to add next. Nothing was changed in your mailbox.")

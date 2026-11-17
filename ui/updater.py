@@ -72,11 +72,11 @@ class Updater:
         if info["behind"]:
             info["changes"] = (await self._git("log", "--format=%s", f"HEAD..{remote}", "-n", "15"))[1].splitlines()
         info["ok"] = True
-        info["message"] = (f"{info['behind']} update(s) available." if info["behind"] else "JARVIS is up to date.")
+        info["message"] = (f"{info['behind']} update(s) available." if info["behind"] else "Abel is up to date.")
         info["restart_needed"], on_disk = await self._restart_needed()
         if info["restart_needed"] and not info["behind"]:
             info["changes"] = (await self._git("log", "--format=%s", f"{self.running}..HEAD", "-n", "15"))[1].splitlines()
-            info["message"] = (f"A newer version ({on_disk}) is already on this computer, but JARVIS is still running "
+            info["message"] = (f"A newer version ({on_disk}) is already on this computer, but Abel is still running "
                                f"{self.running}. Restart to finish updating.")
         if info["behind"]:
             if info["branch"] != BRANCH:
@@ -120,10 +120,10 @@ class Updater:
             code, before = await self._git("rev-parse", "HEAD")
             changed = await self._tracked_changes()
             if st["dirty"]:
-                code, out = await self._git("stash", "push", "-q", "-m", f"JARVIS auto-update {stamp}")
+                code, out = await self._git("stash", "push", "-q", "-m", f"Abel auto-update {stamp}")
                 if code != 0:
                     return fail(f"Could not save your local changes aside: {out[-200:]}")
-                kept.append(f"{len(st['dirty_files'])} changed file(s) saved with 'git stash' (JARVIS auto-update {stamp})")
+                kept.append(f"{len(st['dirty_files'])} changed file(s) saved with 'git stash' (Abel auto-update {stamp})")
             elif changed:  # only Finder junk: drop it so it cannot block the update
                 for f in changed:
                     await self._git("checkout", "--", f)

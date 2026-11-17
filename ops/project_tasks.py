@@ -19,7 +19,7 @@ from core import project_tasks as pt
 from core import tg_group, usagecap
 from core.deadlines import SGT
 from core.models import GroupMessage
-from ops import claude_runner, persona
+from ops import claude_runner, persona, tg
 from ops.deadline_sources import _hhmm
 
 log = logging.getLogger(__name__)
@@ -300,38 +300,42 @@ def digest_data(ctx, g: dict) -> dict:
             "suggested": store.pending_suggestions(g["id"])}
 
 
-def digest_text(ctx, g: dict, always: bool = False) -> str | None:
-    """The per-group digest, built from the stored data (no model call). None when there is nothing to say."""
-    d, tz, a = digest_data(ctx, g), ctx.settings.tz, persona.address(ctx.settings)
+def digest_text(ctx, g: dict, always: bool = False):
+    """The per-group digest, built from the stored data (no model call). None when there is nothing to say.
+    Task text comes from other people's messages, so all of it is escaped."""
+    d, tz = digest_data(ctx, g), ctx.settings.tz
     if not (d["week"] or d["overdue"] or d["decided"] or d["suggested"]) and not always:
         return None
-    lines = [f"{g['label']}: where the project stands, {a}."]
+    parts: list = [tg.card("👥", f"{g['label']} · where the project stands")]
     if d["suggested"]:
-        lines += ["", "Waiting for your word (Close or Keep in the panel's Tasks tab)"]
-        lines += [_suggestion_line(x, tz) for x in d["suggested"]]
+        parts.append(tg.lines(tg.Html(tg.b("Needs your decision") + " " + tg.i("(Close or Keep in the panel's Tasks tab)")),
+                              *(_suggestion_line(x, tz) for x in d["suggested"])))
     if d["week"]:
-        lines += ["", "This week"]
+        rows: list = [tg.b("This week")]
         for who in _order(list(d["week"])):
-            lines.append(f"{who}:" if who != "Group" else "Group:")
+            rows.append(tg.i(who))
             for t in d["week"][who]:
                 note = ""
                 if t.owner_is_me and not (t.volunteered or t.confirmed):
                     note = f" (asked by {t.assigned_by or 'someone'}; not on your calendar until you confirm it in the panel)"
-                lines.append(f"- {t.task}, {pt.due_text(t, tz)}{note}")
+                rows.append(f"• {t.task} · {pt.due_text(t, tz)}{note}")
+        parts.append(tg.lines(*rows))
     if d["overdue"]:
-        lines += ["", "Overdue"]
-        lines += [f"- {_owner_label(t)}: {t.task}, was due {pt.due_text(t, tz)}" for t in d["overdue"]]
+        parts.append(tg.lines(tg.Html("⚠️ " + tg.b("Overdue")),
+                              *(f"• {_owner_label(t)}: {t.task} · was due {pt.due_text(t, tz)}" for t in d["overdue"])))
     if d["decided"]:
-        lines += ["", "Decided"]
-        lines += [f"- {x['text']}" for x in d["decided"]]
+        parts.append(tg.lines(tg.Html("✅ " + tg.b("Decided")), *(f"• {x['text']}" for x in d["decided"])))
     if not (d["week"] or d["overdue"] or d["decided"] or d["suggested"]):
-        lines += ["", f"Nothing dated or overdue, {a}."]
+        parts.append("Nothing dated or overdue.")
+    notes = []
     if d["undated"]:
-        lines += ["", f"{d['undated']} open item(s) have no date yet."]
+        notes.append(f"{d['undated']} open item(s) have no date yet.")
     mine_overdue = sum(1 for t in d["overdue"] if t.owner_is_me)
     if mine_overdue:
-        lines += ["", f"{mine_overdue} of the overdue item(s) are yours, {a}. I mention it only because I must."]
-    return "\n".join(lines)
+        notes.append(f"{mine_overdue} of the overdue item(s) are yours.")
+    if notes:
+        parts.append(tg.i(" ".join(notes)))
+    return tg.blocks(*parts)
 
 
 def find_group(ctx, ref: str) -> dict | None:
@@ -350,17 +354,16 @@ def find_group(ctx, ref: str) -> dict | None:
 
 async def tasks_command(ctx, ref: str = "") -> str:
     """/tasks [group]: the same digest, on demand (also while alerts are paused: you asked)."""
-    a = persona.address(ctx.settings)
     groups_ = pt.project_groups(ctx.settings, ctx.db)
     if not groups_:
-        return (f"No project group is set up, {a}. In the panel's Chats tab, set the group's type to Project "
-                "and I shall keep its list.")
+        return tg.card("👥", "No project group is set up", "In the panel's Chats tab, set the group's type to Project "
+                       "and I'll keep its task list.")
     if ref.strip():
         g = find_group(ctx, ref)
         if g is None:
-            return f"I have no project group matching \"{ref.strip()[:40]}\", {a}. Known: " + ", ".join(x["label"] for x in groups_) + "."
+            return f"No project group matches \"{ref.strip()[:40]}\". Known: " + ", ".join(x["label"] for x in groups_) + "."
         groups_ = [g]
-    return "\n\n".join(digest_text(ctx, g, always=True) for g in groups_)
+    return tg.blocks(*(digest_text(ctx, g, always=True) for g in groups_))
 
 
 async def maybe_weekly_digest(ctx) -> int:
@@ -426,8 +429,8 @@ def listing(settings, db, now: datetime, group_ref: str | None = None, mine_only
 def _suggestion_line(x: dict, tz) -> str:
     who = x["claimed_by"] or "Someone"
     if x["kind"] == "date":
-        return f"- {who} says \"{x['task']}\" moves to {pt.fmt_due(x['new_due'], bool(x['new_all_day']), tz)}"
-    return f"- {who} says \"{x['task']}\" is {'done' if x['new_status'] == 'done' else 'no longer needed'}"
+        return f"• {who} says \"{x['task']}\" moves to {pt.fmt_due(x['new_due'], bool(x['new_all_day']), tz)}"
+    return f"• {who} says \"{x['task']}\" is {'done' if x['new_status'] == 'done' else 'no longer needed'}"
 
 
 def _sug_json(x: dict | None, tz=None) -> dict | None:

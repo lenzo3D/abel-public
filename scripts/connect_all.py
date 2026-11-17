@@ -135,7 +135,7 @@ async def main() -> int:
     for name, ok, detail in results:
         say(f"  {'OK  ' if ok else 'FAIL'}  {name}: {detail}")
     failed = [n for n, ok, _ in results if not ok]
-    say("\nAll set. JARVIS restarts now and keeps these connected." if not failed
+    say("\nAll set. Abel restarts now and keeps these connected." if not failed
         else f"\nNeeds attention: {', '.join(failed)}. Fix the line above, then press Connect everything again.")
     return 1 if failed else 0
 

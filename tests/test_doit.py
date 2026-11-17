@@ -44,7 +44,7 @@ async def test_doit_prompt_contains_course_and_title(db, env_file):
     reply = await d.on_doit("bs:assignment:1001:55")
     await d.wait()
     prompt, cwd = r.prompts[0]
-    assert "INV2101" in prompt and "Tutorial 55" in prompt and "Fri 30 Oct 23:59" in prompt
+    assert "INV2101" in prompt and "Tutorial 55" in prompt and "Fri 30 Oct, 23:59" in prompt
     assert "folder_id 55" in prompt and "do not submit" in prompt.lower()
     assert cwd == s.settings.workspace_dir
     assert "Working on" in reply

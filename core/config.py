@@ -34,7 +34,7 @@ class Settings:
     recess_week: int | None = None  # the teaching week after which the one-week recess falls; None = no break
     school_mail_domains: tuple[str, ...] = ()
     user_name: str = ""
-    address_as: str = "Sir"
+    address_as: str = ""  # a name to greet the user by; empty = first word of USER_NAME
     ops_endpoint: Path | None = None  # where Ops writes how to reach its API (default state/ops.api.json)
     ops_api_transport: str | None = None  # "unix" or "tcp"; None = unix on macOS/Linux, tcp on Windows
     ops_port: int = 0  # tcp only; 0 = let the OS pick a free port
@@ -129,7 +129,7 @@ def load_settings(env_file: Path | None = None) -> Settings:
         semester_start=get("SEMESTER_START"),
         recess_week=_recess_week(get("RECESS_WEEK")),
         user_name=(get("USER_NAME", "") or "").strip()[:40],
-        address_as=((get("ADDRESS_AS", "Sir") or "Sir").strip()[:20] or "Sir"),
+        address_as=(get("ADDRESS_AS", "") or "").strip()[:20],
         school_mail_domains=tuple(x.strip().lower() for x in (get("SCHOOL_MAIL_DOMAINS", "") or "").split(",") if x.strip()),
     )
 

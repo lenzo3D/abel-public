@@ -64,7 +64,7 @@ async def test_reminder_text_in_sgt(db, env_file):
     _seed(db, now)
     await run_reminders(s)
     text, buttons = s.notifier.messages[0]
-    assert "Fri 30 Oct 23:59" in text and "Tutorial 55" in text and "INV2101" in text
+    assert text == "⏰ <b>Due in 23h · INV2101</b>\nTutorial 55\n🗓️ Fri 30 Oct, 23:59 · Not submitted yet"
     assert buttons == [[("Do it", "doit:bs:assignment:1001:55")],
                        [("I submitted elsewhere", "rem:done:bs:assignment:1001:55")]]
     await run_reminders(s)
@@ -77,7 +77,7 @@ async def test_run_rechecks_submission(db, env_file):
     _seed(db, now)
     s.bs.submitted_folders.add(55)
     await run_reminders(s)
-    assert [m[0].split(":")[0] for m in s.notifier.messages] == ["Submission confirmed"]
+    assert [m[0].split(" · ")[0] for m in s.notifier.messages] == ["✅ <b>Submission confirmed"]
     assert db.conn.execute("select submitted from due_dates").fetchone()[0] == 1
 
 
@@ -121,7 +121,7 @@ async def test_late_start_sends_one_then_nothing(db, env_file):
     assert len(s.notifier.messages) == 1
     s.clock.now = DUE - timedelta(minutes=29)
     await run_reminders(s)
-    assert len(s.notifier.messages) == 2 and "29 min left" in s.notifier.messages[1][0]
+    assert len(s.notifier.messages) == 2 and "🔴 <b>Due in 29 min" in s.notifier.messages[1][0]
 
 
 async def test_confirmed_submission_silences_and_notes_once(db, env_file):
@@ -130,7 +130,7 @@ async def test_confirmed_submission_silences_and_notes_once(db, env_file):
     _seed(db, now)
     s.bs.submitted_folders.add(55)
     await run_reminders(s)
-    assert len(s.notifier.messages) == 1 and s.notifier.messages[0][0].startswith("Submission confirmed")
+    assert len(s.notifier.messages) == 1 and s.notifier.messages[0][0].startswith("✅ <b>Submission confirmed")
     s.clock.now = DUE - timedelta(hours=2)
     await run_reminders(s)
     assert len(s.notifier.messages) == 1
@@ -157,7 +157,7 @@ async def test_uncertain_check_still_reminds(db, env_file):
     s.bs.submitted = boom
     await run_reminders(s)
     text = s.notifier.messages[0][0]
-    assert "Could not confirm submission." in text and "[Urgent]" in text and "2h left" in text
+    assert "Could not confirm submission" in text and text.startswith("🔴 <b>Due in 2h · INV2101</b>")
 
 
 async def test_urgent_ignores_quiet_hours_and_mute_but_early_respects_them(db, env_file):
@@ -170,7 +170,7 @@ async def test_urgent_ignores_quiet_hours_and_mute_but_early_respects_them(db, e
     assert s.notifier.messages == []  # held, not marked sent
     s.clock.now = DUE - timedelta(hours=5)
     await run_reminders(s)
-    assert len(s.notifier.messages) == 1 and "[Urgent]" in s.notifier.messages[0][0]
+    assert len(s.notifier.messages) == 1 and s.notifier.messages[0][0].startswith("🔴")
     db.set_setting("paused", "1")
     s.clock.now = DUE - timedelta(minutes=45)
     await run_reminders(s)
@@ -238,7 +238,7 @@ async def test_missed_message_once_with_late_hint(db, env_file):
     await run_reminders(s)
     assert len(s.notifier.messages) == 1
     text = s.notifier.messages[0][0]
-    assert text.startswith("Missed:") and "No submission found." in text and "submit late" in text
+    assert text.startswith("⚠️ <b>Missed · INV2101</b>") and "No submission found" in text and "submit late" in text
 
 
 async def test_old_misses_are_silent(db, env_file):
@@ -295,7 +295,7 @@ async def test_rem_callbacks_go_through_router_and_owner_check(db, env_file):
     replies = []
 
     def q(user_id, data):
-        async def reply_text(t):
+        async def reply_text(t, **kw):
             replies.append(t)
 
         async def answer():
@@ -421,3 +421,57 @@ async def test_mute_is_case_insensitive_and_no_snooze_in_last_stretch(db, env_fi
     await run_reminders(s)
     labels = [b[0] for row in s.notifier.messages[0][1] for b in row]
     assert "Snooze 1h" not in labels and "I submitted elsewhere" in labels
+
+
+# ---------------------------------------------------------------- twin calendar entries (one deadline listed twice)
+
+def _quiz(db, key, title, moment, now, course="26S2-731CMBK_013682", kind="assignment"):
+    DeadlineStore(db).upsert(Deadline(key=key, title=title, course_code=course, kind=kind, start_utc=moment.isoformat(),
+                                      end_utc=None, all_day=False, source="brightspace", source_ref="",
+                                      confidence="confirmed", quote=""), now)
+
+
+async def test_two_calendar_entries_for_the_same_deadline_send_one_reminder(db, env_file):
+    due = DUE + timedelta(days=5)
+    now = due - timedelta(hours=2, minutes=59)
+    s = _svc(db, env_file, now)
+    title = "CMBK Reflection - Fireside Chat 2026 (due by 13 Nov, 2pm)"
+    _quiz(db, "bs:cal:2865876", title, due, now)
+    _quiz(db, "bs:cal:2866390", title.upper(), due, now)  # same course, same title (any case), same moment
+    _quiz(db, "bs:cal:3", "Another task", due, now)  # a different deadline at the same time still gets its own
+    await run_reminders(s)
+    texts = [m for m, _ in s.notifier.messages]
+    assert len(texts) == 2 and sum("Fireside" in t.title() for t in texts) == 1
+    assert texts[0] == "🔴 <b>Due in 2h 59m · CMBK</b>\nCMBK Reflection – Fireside Chat 2026\n🗓️ Wed 04 Nov, 23:59"
+    rows = {r["key"]: json.loads(r["sent_json"]) for r in db.conn.execute("select * from deadline_reminders")}
+    assert rows["bs:cal:2865876"] == rows["bs:cal:2866390"] == ["1 day", "3 hours"]  # the twin is recorded as sent
+    await run_reminders(s)
+    s.clock.now = due - timedelta(hours=1)
+    await run_reminders(s)
+    assert len(s.notifier.messages) == 2  # and never sent later either
+
+
+async def test_twin_reminded_on_an_earlier_run_is_not_repeated(db, env_file):
+    due = DUE + timedelta(days=5)
+    now = due - timedelta(hours=20)
+    s = _svc(db, env_file, now)
+    _quiz(db, "bs:cal:1", "Reflection", due, now)
+    await run_reminders(s)
+    _quiz(db, "bs:cal:2", "reflection", due, now)  # the duplicate entry appears later
+    await run_reminders(s)
+    assert len(s.notifier.messages) == 1
+    s.clock.now = due - timedelta(hours=2)
+    await run_reminders(s)
+    assert len(s.notifier.messages) == 2  # the 3-hour reminder, once
+
+
+async def test_events_read_as_starts_in(db, env_file):
+    start = DUE + timedelta(days=5)
+    now = start - timedelta(hours=20)
+    s = _svc(db, env_file, now)
+    DeadlineStore(db).upsert(Deadline(key="mine:1", title="Career talk", course_code=None, kind="other",
+                                      start_utc=start.isoformat(), end_utc=None, all_day=False, source="mine",
+                                      source_ref="", confidence="confirmed", quote="", as_event=True), now)
+    await run_reminders(s)
+    text = s.notifier.messages[0][0]
+    assert text.startswith("⏰ <b>Starts in 20h · Your calendar</b>\nCareer talk")

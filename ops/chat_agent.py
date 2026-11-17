@@ -1,4 +1,4 @@
-"""One bot: every non-command message to JARVIS Ops goes to a full Claude Code agent with conversation memory.
+"""One bot: every non-command message to Abel Ops goes to a full Claude Code agent with conversation memory.
 
 The agent gets the school MCP (all tools, including PROPOSE-only submit/post/send that still need approval in Ops),
 the user's skills, and read/write access to the workspace. /new starts a fresh conversation; a conversation
@@ -59,7 +59,7 @@ def build_agent_command(prompt: str, settings, session_id: str | None) -> list[s
 
 
 async def stream_claude(s, prompt: str, session_id: str | None) -> AsyncIterator[tuple[str, str]]:
-    """Run the JARVIS agent once. Yields ('session', id), ('text', block)... and finally ('result', text)."""
+    """Run the Abel agent once. Yields ('session', id), ('text', block)... and finally ('result', text)."""
     proc = await asyncio.create_subprocess_exec(
         *build_agent_command(prompt, s, session_id), cwd=str(s.workspace_dir), stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE, limit=16 * 1024 * 1024, **hostos.new_group_kwargs())

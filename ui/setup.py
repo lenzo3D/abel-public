@@ -54,7 +54,7 @@ async def find_owner(token: str) -> dict:
     except httpx.HTTPError:
         return {"ok": False, "error": "Could not reach Telegram. Check your internet connection and try again."}
     if code == 409:
-        return {"ok": False, "error": "JARVIS is already running with this bot. Stop it from the top bar, then try again."}
+        return {"ok": False, "error": "Abel is already running with this bot. Stop it from the top bar, then try again."}
     if code != 200 or not body.get("ok"):
         return {"ok": False, "error": "Telegram did not accept that token."}
     for upd in reversed(body.get("result", [])):
@@ -69,7 +69,8 @@ def save(env_file: Path, values: dict) -> dict:
     token = str(values.get("token", "")).strip()
     user, pw = str(values.get("school_user", "")).strip(), str(values.get("school_pass", ""))
     base = str(values.get("school_base") or DEFAULT_BASE).strip().rstrip("/")
-    name, address = str(values.get("name", "")).strip()[:40], str(values.get("address", "")).strip()[:20] or "Sir"
+    name = str(values.get("name", "")).strip()[:40]
+    address = str(values.get("address", "")).strip()[:20] or name  # no honorific by default: plain first name
     try:
         owner = int(values.get("owner_id"))
     except (TypeError, ValueError):

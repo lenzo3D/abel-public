@@ -1,8 +1,12 @@
-# JARVIS
+<p><img src="ui/static/logo.svg" alt="" width="48" height="48"></p>
 
-A personal school assistant for Ngee Ann Polytechnic students. It runs on your own computer, watches POLITEMall and
-Microsoft Teams, and messages you on Telegram about deadlines, announcements and new material. You can also talk to
-it in plain language, from Telegram or from a local control panel.
+# Abel
+
+**An AI study assistant for polytechnic and university students. Built by Jake.**
+
+Abel runs on your own computer, watches POLITEMall (Brightspace), Microsoft Teams and your school email, and messages
+you on Telegram about deadlines, announcements and new material. You can also talk to it in plain language, from
+Telegram or from its local dashboard. (Earlier versions were called JARVIS.)
 
 > Not affiliated with Ngee Ann Polytechnic. It signs in as you, the same way you do in a browser. Use it on your own
 > account only, and follow your school's rules on automated access.
@@ -22,36 +26,36 @@ it in plain language, from Telegram or from a local control panel.
 - **Class and project group chats (optional).** Reads the Telegram groups you choose and summarises them. It only
   reads. By default it never replies in a group, and nobody in the group can talk to it.
 - **Project tasks (optional).** In the Chats tab, set your project group's type to **Project** (press Change groups,
-  pick the type, Save). JARVIS then keeps a list of who owes what from that chat: "I'll do the survey" goes to
+  pick the type, Save). Abel then keeps a list of who owes what from that chat: "I'll do the survey" goes to
   whoever said it, "@Ben do the slides" to Ben, and "done" or "sent the slides" ticks the task off. The Tasks tab shows
   it per person (you first), with the message each item came from; you can mark items done or dropped, change the owner
   or date, and list nicknames (for example "bubu is Ben Tan"). Only your own tasks with a date, and group meetings
   and demos, go on your Google Calendar, as tentative events. Every Sunday at 19:00 you get one Telegram message per project
-  group (this week, overdue, decided), and `/tasks` shows it any time. JARVIS never closes your own tasks or moves their dates because of something written in
+  group (this week, overdue, decided), and `/tasks` shows it any time. Abel never closes your own tasks or moves their dates because of something written in
   the chat: when someone says one is done, or gives it a new date, it appears in the Tasks tab (and the digest) as a
   suggestion with Close/Accept and Keep buttons, and nothing changes until you answer. A task someone else gave you
-  goes on your calendar only after you confirm it in the Tasks tab; tasks you volunteered for go on automatically. Ask JARVIS "what do I owe the group?" in chat.
+  goes on your calendar only after you confirm it in the Tasks tab; tasks you volunteered for go on automatically. Ask Abel "what do I owe the group?" in chat.
   It only reads the group; it never posts there. It uses a little Claude time (haiku by default, paused by the usage cap).
-- **Auto-reply (optional, off by default).** Mark a group as **Reply** in the Chats tab and JARVIS answers there
+- **Auto-reply (optional, off by default).** Mark a group as **Reply** in the Chats tab and Abel answers there
   automatically, from your own Telegram account, using only that group's chat, your upcoming deadlines and course
   material. It never sees your email or your other chats, and it is limited to 20 replies an hour per group.
   `/pause` in Telegram stops it at once.
 - **School email (optional).** Reads Outlook mail and alerts you to important messages.
 - **Ask it anything.** "What is due this week?", "Find the week 5 notes on cash flow", "Do my tutorial" (it shows
   you the result first).
-- **Control panel.** A dashboard at `http://127.0.0.1:8765` to start and stop JARVIS, see connections, your
+- **Control panel.** A dashboard at `http://127.0.0.1:8765` to start and stop Abel, see connections, your
   calendar, deadlines and usage.
 
-**Safety rule:** JARVIS never submits, sends or posts anything on its own. Every action that changes something
+**Safety rule:** Abel never submits, sends or posts anything on its own. Every action that changes something
 outside your computer needs a tap on an Approve button in Telegram.
 
 ## What you need
 
 | You need | Why |
 |---|---|
-| A Mac, a Windows 10/11 PC (or Linux) that is on while you want alerts | JARVIS runs on your computer. While it runs, the panel keeps it from sleeping (closing the lid still stops it). |
+| A Mac, a Windows 10/11 PC (or Linux) that is on while you want alerts | Abel runs on your computer. While it runs, the panel keeps it from sleeping (closing the lid still stops it). |
 | Python 3.12 or newer | The installer checks this. On a Mac: `brew install python@3.12`. On Windows: install it from https://www.python.org/downloads/windows/ and tick **Add python.exe to PATH** |
-| The Telegram app | JARVIS messages you there |
+| The Telegram app | Abel messages you there |
 | A Claude subscription and the Claude Code command | Chat, briefings and summaries use it. Install from https://claude.com/claude-code, then run `claude` once and sign in |
 | Your POLITEMall login | Stored only on your computer, in `secrets.env` |
 
@@ -66,7 +70,7 @@ cd np-jarvis-public
 ```
 
 The installer creates a private Python environment, installs the dependencies and the sign-in browser, checks your
-setup, and opens the control panel. On a Mac you can also double-click **Open JARVIS.command**.
+setup, and opens the control panel. On a Mac you can also double-click **Open Abel.command**.
 
 **On Windows 10/11** (in PowerShell, from the folder you cloned):
 
@@ -76,10 +80,10 @@ cd np-jarvis-public
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-It does the same steps, then asks whether to start JARVIS when you log in (a Task Scheduler entry). Afterwards,
-double-click **Open JARVIS.bat** to open the panel. Notes for Windows: install Claude Code with its Windows
+It does the same steps, then asks whether to start Abel when you log in (a Task Scheduler entry). Afterwards,
+double-click **Open Abel.bat** to open the panel. Notes for Windows: install Claude Code with its Windows
 installer, so that `claude.exe` is found (a `claude.cmd` from npm also works when the real program sits beside it);
-keep the JARVIS folder somewhere only you can read, such as inside your user folder (Windows has no per-file
+keep the Abel folder somewhere only you can read, such as inside your user folder (Windows has no per-file
 `chmod 600`); and the `CLAUDE_RUN_AS` option from the server setup does not exist on Windows.
 
 ## First-run setup (about five minutes)
@@ -87,14 +91,14 @@ keep the JARVIS folder somewhere only you can read, such as inside your user fol
 The control panel opens a setup wizard the first time:
 
 1. **Create your bot.** In Telegram, message @BotFather, send `/newbot`, and paste the token it gives you.
-2. **Connect your Telegram.** Press Start on your new bot and send it a message. JARVIS finds your account and will
+2. **Connect your Telegram.** Press Start on your new bot and send it a message. Abel finds your account and will
    only ever answer you.
 3. **POLITEMall login.** Your student ID and password.
-4. **About you.** Your name and how JARVIS should address you.
+4. **About you.** Your name, so Abel can greet you by it.
 
 Then open the **Logins & Tools** tab and press **Connect everything**. It signs in to POLITEMall, Teams and Outlook
 one after the other (you do the sign-in and any phone approval yourself; Microsoft's number is also sent to your
-Telegram), then checks that each one really works and prints a summary. JARVIS restarts by itself afterwards. The
+Telegram), then checks that each one really works and prints a summary. Abel restarts by itself afterwards. The
 indicators next to the clock turn green when everything is live. Press the same button again any time something
 turns red. The **Claude** light shows whether Claude Code is still signed in; if it turns red (Telegram tells you too),
 press its **Sign in** button and approve in the browser.
@@ -111,17 +115,17 @@ Set `SEMESTER_START` in `secrets.env` to the Monday of week 1 so "Week 9" in tea
 
 ## Everyday use
 
-- Open the panel with **Open JARVIS.command** (Mac) or **Open JARVIS.bat** (Windows), or bookmark `http://127.0.0.1:8765`.
+- Open the panel with **Open Abel.command** (Mac) or **Open Abel.bat** (Windows), or bookmark `http://127.0.0.1:8765`.
 - Talk to the bot in Telegram. Useful commands: `/status`, `/deadlines`, `/scan`, `/usage`, `/quiet 23-7`, `/pause`, `/resume`.
 - **Updating:** the Updates card in the panel shows new versions and has an **Update and restart** button.
 - **Something wrong?** Run `.venv/bin/python scripts/doctor.py` (Windows: `.venv\Scripts\python.exe scripts\doctor.py`). It checks the install and says how to fix each problem.
 
 ## Cost and privacy
 
-- JARVIS itself is free. Chat, briefings and summaries use your Claude subscription. The **Usage** tab shows how
+- Abel itself is free. Chat, briefings and summaries use your Claude subscription. The **Usage** tab shows how
   much.
 - **Usage cap (optional, off by default).** In the Usage tab you can set a daily and/or weekly limit in estimated usage
-  (a yardstick worked out from the cost Claude Code reports, not a bill). JARVIS warns you on Telegram at 80% and 100%.
+  (a yardstick worked out from the cost Claude Code reports, not a bill). Abel warns you on Telegram at 80% and 100%.
   At 100% it pauses class chat summaries, date extraction and group replies to save usage; chat, "Do it" and the
   morning briefing (as a plain list) keep working, and the paused work picks up where it left off when the day or week
   resets. Tap Resume (panel, the Telegram warning, or `/usage resume`) to carry on for the rest of the period. The Usage tab
@@ -144,7 +148,7 @@ More in [SECURITY.md](SECURITY.md).
 ```bash
 scripts/install_launchagent.sh --remove   # Mac only: stop starting at login
 # Windows: powershell -ExecutionPolicy Bypass -File scripts\install_startup.ps1 -Remove
-cd .. && rm -rf np-jarvis-public          # deletes JARVIS and everything it stored
+cd .. && rm -rf np-jarvis-public          # deletes Abel and everything it stored
 ```
 
 Revoke the bot in @BotFather (`/revoke`) and change your POLITEMall password if you want a clean break.

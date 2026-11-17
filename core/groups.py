@@ -1,4 +1,4 @@
-"""Which Telegram groups JARVIS reads and what they are called.
+"""Which Telegram groups Abel reads and what they are called.
 
 The user picks groups in the panel (stored in the database); GROUP_CHAT_IDS in secrets.env is the fallback.
 Each group has a label ("Class", "Project team") and a kind: class, project, reply or other.

@@ -145,7 +145,7 @@ async def test_one_transient_failure_does_not_turn_the_indicator_red_and_a_good_
     assert _failures(db) == 2 and state() != "failing"
     await mail_jobs.sweep_outlook(s)
     assert _failures(db) == 3 and state() == "failing"
-    assert "checks failing (3 in a row)" in s.notifier.messages[-1][0]
+    assert "checks failing</b>\n3 in a row" in s.notifier.messages[-1][0]
     await mail_jobs.sweep_outlook(s)  # a successful sweep clears it
     assert _failures(db) == 0 and state() == "live"
     assert db.get_json_setting("outlook_status", {})["state"] == "ok"

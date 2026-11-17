@@ -1,4 +1,4 @@
-"""Searchable library of everything JARVIS has read for the semester (spec addendum)."""
+"""Searchable library of everything Abel has read for the semester (spec addendum)."""
 from __future__ import annotations
 
 import re

@@ -49,7 +49,7 @@ def register(sched, services) -> None:
 
 
 def register_boot(sched, services, delay_s: float = 20.0) -> None:
-    """One-off checks shortly after JARVIS starts, so connection indicators and alerts catch up within a minute
+    """One-off checks shortly after Abel starts, so connection indicators and alerts catch up within a minute
     instead of waiting for the next quarter-hour (e.g. right after a login or an update)."""
     from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo

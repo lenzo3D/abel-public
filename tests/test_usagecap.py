@@ -131,7 +131,7 @@ async def test_warnings_sent_once_per_period_each(db, env_file):
     assert await usage_watch.check(s) == ["daily:100"]
     assert await usage_watch.check(s) == []
     texts = [m for m, _ in s.notifier.messages]
-    assert len(texts) == 2 and "80%" in texts[0] and "spent" in texts[1] and "Sir" in texts[0]
+    assert len(texts) == 2 and "80%" in texts[0] and "used up" in texts[1] and "Sir" not in texts[0]
     assert s.notifier.messages[0][1] is None
     assert s.notifier.messages[1][1] == [[("Resume for the rest of today", "usage:resume")]]
     s.clock.now = NOW + timedelta(days=1)                                      # next day: fresh
@@ -167,8 +167,8 @@ async def test_usage_command_and_resume_button(db, env_file):
     usagecap.set_config(db, daily=1.0)
     assert "nothing is paused" in (await usage_watch.command(s, "resume")).lower()
     log(db, NOW, cost=2)
-    assert "PAUSED" in await usage_watch.command(s)
-    assert "running again" in await usage_watch.on_resume_button(s)
+    assert "Paused to save usage" in await usage_watch.command(s)
+    assert "Resumed" in await usage_watch.on_resume_button(s)
     assert not usagecap.is_paused(db, SGT, NOW)
 
 
@@ -243,7 +243,7 @@ async def test_briefing_still_goes_out_as_a_plain_list_when_paused(db, env_file)
     await briefing.daily_briefing(s)
     assert s.extra["calls"] == []
     text = s.notifier.messages[0][0]
-    assert text.startswith("Good morning, Sir") and "paused to save usage" in text and "Due in the next 7 days" in text
+    assert text.startswith("☀️ <b>Good morning") and "Sir" not in text and "paused to save usage" in text and "⏰ Due soon" in text
     assert db.get_setting("last_briefing_date")
 
 
@@ -395,7 +395,7 @@ def test_after_record_hook_runs_and_cannot_break_recording():
 
 def test_persona_voice():
     s = type("S", (), {"address_as": "Madam"})()
-    assert "Madam" in persona.usage_warning(s, "weekly", 80, 4, 5) and "this week" in persona.usage_warning(s, "weekly", 100, 5, 5)
+    assert "Madam" not in persona.usage_warning(s, "weekly", 80, 4, 5) and "this week" in persona.usage_warning(s, "weekly", 100, 5, 5)
 
 
 async def test_teams_lines_are_prefiltered_too(db, env_file):
@@ -500,3 +500,15 @@ def mail_svc(db, env_file, tmp_path, reader, reply):
 
     s.extra["run_text"], s.extra["models"] = run_text, models
     return s
+
+
+def test_usage_warnings_are_cards(env_file):
+    from core.config import load_settings
+    from ops import persona, tg
+
+    s = load_settings(env_file)
+    w80 = persona.usage_warning(s, "daily", 80, 4, 5)
+    assert w80.startswith("📊 <b>80% of today's Claude allowance used</b>\nEstimated <b>$4.00</b> of the $5.00")
+    w100 = persona.usage_warning(s, "daily", 100, 5.1, 5)
+    assert "<b>Paused:</b>" in w100 and "<b>Still working:</b>" in w100 and w100.endswith("Resume anyway?")
+    assert isinstance(w100, tg.Html)

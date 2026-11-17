@@ -1,4 +1,4 @@
-"""Reconcile the deadlines table with Google Calendar. Only touches events JARVIS created (by stored id).
+"""Reconcile the deadlines table with Google Calendar. Only touches events Abel created (by stored id).
 
 Event ids are derived from the deadline key, so a retried or concurrent insert can never create a second copy.
 """

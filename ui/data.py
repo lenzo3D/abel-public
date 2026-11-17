@@ -37,7 +37,7 @@ def checks(settings) -> list[dict]:
         {"name": "Telegram bot configured", "ok": bool(settings.ops_bot_token and settings.allowed_telegram_id),
          "hint": "Set OPS_BOT_TOKEN and ALLOWED_TELEGRAM_ID in secrets.env"},
         {"name": "Semester start date set", "ok": bool(settings.semester_start),
-         "hint": "Set SEMESTER_START=YYYY-MM-DD (Monday of week 1) in secrets.env, then restart JARVIS"},
+         "hint": "Set SEMESTER_START=YYYY-MM-DD (Monday of week 1) in secrets.env, then restart Abel"},
     ]
     if settings.semester_start:  # optional, so it never shows as a problem
         rw = getattr(settings, "recess_week", None)
@@ -100,11 +100,11 @@ def connections(settings, ops_mode: str, now: datetime | None = None) -> list[di
         elif last_ok is None and not _has_session(settings, site):
             state, detail = "login", "No login saved yet."
         elif ops_mode == "starting":
-            state, detail = "starting", "JARVIS is starting."
+            state, detail = "starting", "Abel is starting."
         elif not running:
             state = "offline"
-            detail = (f"JARVIS is not running. Last confirmed {_ago(age)}." if age is not None
-                      else "JARVIS is not running, so the login cannot be checked.")
+            detail = (f"Abel is not running. Last confirmed {_ago(age)}." if age is not None
+                      else "Abel is not running, so the login cannot be checked.")
         elif age is None:
             state, detail = "stale", "Waiting for the first check."
         elif age > limit:
@@ -171,13 +171,13 @@ def _outlook_connection(settings, conn, running: bool, now: datetime) -> dict:
     limit = FRESH["brightspace_day"] if hour >= 7 else FRESH["brightspace_night"]
     action, label = None, None
     if not saved:
-        state, detail, action, label = "unconfigured", "Optional. Log in to let JARVIS read your school email.", "login_outlook", "Connect"
+        state, detail, action, label = "unconfigured", "Optional. Log in to let Abel read your school email.", "login_outlook", "Connect"
     elif prompted:
         state, detail, action = "login", "The Outlook session expired. Log in again to resume.", "login_outlook"
     elif (status or {}).get("state") == "no_access" or failures >= 3:
         state, detail, action, label = "failing", "Logged in, but the mailbox could not be read yet. Run the access check.", "probe_outlook", "Check access"
     elif not running:
-        state, detail = "offline", "JARVIS is not running, so email cannot be confirmed." + (f" Last confirmed {_ago(now - last_ok)}." if last_ok else "")
+        state, detail = "offline", "Abel is not running, so email cannot be confirmed." + (f" Last confirmed {_ago(now - last_ok)}." if last_ok else "")
     elif last_ok is None:
         state, detail = "stale", "Waiting for the first check."
     elif now - last_ok > limit:
@@ -206,7 +206,7 @@ def _claude_connection(conn, running: bool, now: datetime) -> dict:
     elif auth.get("ok") is True:
         state, detail = "live", "Signed in. Chat, briefings and summaries work." + (f" Last confirmed {_ago(now - at)}." if at else "")
     elif not running:
-        state, detail = "offline", "JARVIS is not running, so the Claude sign-in cannot be checked."
+        state, detail = "offline", "Abel is not running, so the Claude sign-in cannot be checked."
     else:
         state, detail = "stale", "Waiting for the first check (within 10 minutes)."
     return {"id": "claude", "name": "Claude", "state": state, "color": COLORS[state], "detail": detail,
@@ -220,16 +220,16 @@ def _telegram_connection(settings, conn, running: bool) -> dict:
     t = chats.telegram_state(settings, _ReadOnlySettings(conn), running)
     n = t["groups"]
     table = {
-        "offline": ("offline", f"JARVIS is not running, so the {n} group(s) cannot be confirmed."),
+        "offline": ("offline", f"Abel is not running, so the {n} group(s) cannot be confirmed."),
         "login": ("login", "Telegram needs you to log in again. Use the Chats tab."),
         "failing": ("failing", "The Telegram reader keeps failing. See the Logs tab."),
         "stale": ("stale", "Not collecting messages yet. Check that the bot's group privacy is off (see the Chats tab)."),
         "live": ("live", f"Reading {n} group(s). The bot only listens: it never posts or replies."),
     }
     if t["stage"] == "setup":
-        state, detail = "unconfigured", "Add the JARVIS bot to your class or project group (Chats tab), or log in with your own account."
+        state, detail = "unconfigured", "Add the Abel bot to your class or project group (Chats tab), or log in with your own account."
     elif t["stage"] == "pick":
-        state, detail = "pick", "Groups found. Choose which ones JARVIS should read in the Chats tab."
+        state, detail = "pick", "Groups found. Choose which ones Abel should read in the Chats tab."
     else:
         state, detail = table.get(t["health"], ("stale", "Checking."))
     return {"id": "telegram", "name": "Telegram groups", "state": state, "color": COLORS[state], "detail": detail,

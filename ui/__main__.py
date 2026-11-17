@@ -45,11 +45,11 @@ async def amain() -> None:
     await runner.setup()
     await web.TCPSite(runner, HOST, port).start()
     url = f"http://{HOST}:{port}"
-    logging.getLogger("ui").info("JARVIS control panel on %s", url)
+    logging.getLogger("ui").info("Abel control panel on %s", url)
     sup.adopt()
     if sup.prefs.get("resume_ops", False):  # we restarted ourselves after an update while JARVIS was running
         sup.prefs.set("resume_ops", False)
-        logging.getLogger("ui").info("resuming JARVIS after update: %s", (await sup.start())["message"])
+        logging.getLogger("ui").info("resuming Abel after update: %s", (await sup.start())["message"])
     else:
         await sup.autostart_if_wanted()
     if os.environ.get("JARVIS_UI_OPEN") == "1":

@@ -212,7 +212,7 @@ async def test_discussion_card_names_forum_and_topic(db, env_file):
     await Approvals(s).propose("brightspace_discussion_post", {"course": "INV2101", "forum_id": 3, "topic_id": 4,
                                                                "subject": "Q3", "text": "Is (b) 5%?"}, "")
     text = s.notifier.messages[0][0]
-    assert "Week 7 Q&A › Tutorial questions" in text and "Is (b) 5%?" in text
+    assert "Week 7 Q&amp;A › Tutorial questions" in text and "<blockquote>Is (b) 5%?</blockquote>" in text
 
 
 def test_prepare_submission_cleans_a_hostile_file_name(tmp_path):
@@ -222,3 +222,11 @@ def test_prepare_submission_cleans_a_hostile_file_name(tmp_path):
     (ws / 'a"b‮.docx').write_bytes(b"x")
     p = prepare_submission(ws, out, 'a"b‮.docx')
     assert p["file_name"] == "a_b_.docx" and p["snapshot"].endswith("a_b_.docx")
+
+
+async def test_approval_card_shows_drafted_text_exactly_and_escaped(db, env_file):
+    s = svc(db, env_file)
+    await Approvals(s).propose("teams_send_message", {"conv_id": "19:abc", "text": "Hi **all** <b>x</b> & _y_"}, "")
+    text = s.notifier.messages[0][0]
+    assert "<blockquote>Hi **all** &lt;b&gt;x&lt;/b&gt; &amp; _y_</blockquote>" in text
+    assert text.startswith("✋ <b>Approval #1 · Send Teams message</b>")

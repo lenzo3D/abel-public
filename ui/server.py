@@ -300,7 +300,7 @@ class Panel:
         if not text:
             raise web.HTTPBadRequest(text="empty message")
         if self.sup.mode() not in ("running", "external"):
-            raise web.HTTPConflict(text=json.dumps({"error": "JARVIS is not running. Start it from the Overview tab first."}),
+            raise web.HTTPConflict(text=json.dumps({"error": "Abel is not running. Start it from the Overview tab first."}),
                                    content_type="application/json")
         if self.chat.busy:
             raise web.HTTPConflict(text=json.dumps({"error": "Still working on the previous message."}),
@@ -329,7 +329,7 @@ class Panel:
             return web.json_response(res, status=200 if res["ok"] else 409)
         # This job needs a browser profile that JARVIS keeps open: pause JARVIS, run the job, bring JARVIS back.
         if self.sup.mode() == "external":
-            return web.json_response({"ok": False, "message": "JARVIS was started outside this panel (for example in a "
+            return web.json_response({"ok": False, "message": "Abel was started outside this panel (for example in a "
                                       "terminal), so I cannot pause it. Stop it there first, then try again."}, status=409)
         was_running = self.sup.managed_running
         if was_running:
@@ -339,9 +339,9 @@ class Panel:
             if not was_running:
                 return ""
             res = await self.sup.start()
-            return "JARVIS restarted." if res["ok"] else res["message"]
+            return "Abel restarted." if res["ok"] else res["message"]
 
-        note = "Pausing JARVIS while the browser window is open; it restarts by itself afterwards.\n" if was_running else ""
+        note = "Pausing Abel while the browser window is open; it restarts by itself afterwards.\n" if was_running else ""
         res = await self.jobs.start(job_id, on_finish=resume if was_running else None, note=note)
         if not res["ok"] and was_running:
             await self.sup.start()

@@ -29,7 +29,7 @@ def test_confirmed_timed_deadline():
     assert b["reminders"] == {"useDefault": False, "overrides": [{"method": "popup", "minutes": 1440},
                                                                  {"method": "popup", "minutes": 180}]}
     assert b["extendedProperties"]["private"] == {"jarvis": "1", "jarvis_key": "bs:assignment:1:5"}
-    assert "nplms.polite.edu.sg" in b["description"] and "Added by JARVIS" in b["description"]
+    assert "nplms.polite.edu.sg" in b["description"] and "Added by Abel" in b["description"]
 
 
 def test_tentative_all_day_test():

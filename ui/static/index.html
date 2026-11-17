@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
-<title>J.A.R.V.I.S. Command Center</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Crect width='60' height='60' rx='12' fill='%2302080f'/%3E%3Ccircle cx='30' cy='30' r='22' fill='none' stroke='%2328e0ff' stroke-width='3'/%3E%3Ccircle cx='30' cy='30' r='13' fill='none' stroke='%2328e0ff' stroke-width='2' stroke-dasharray='4 3'/%3E%3Ccircle cx='30' cy='30' r='5' fill='%2328e0ff'/%3E%3C/svg%3E">
+<meta name="color-scheme" content="light dark">
+<title>Abel</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
@@ -13,15 +13,15 @@
 
   <aside class="side">
     <div class="logo">
-      <svg class="logo-mark" viewBox="0 0 60 60" aria-hidden="true">
-        <circle cx="30" cy="30" r="27" class="lm-a"/><circle cx="30" cy="30" r="20" class="lm-b"/>
-        <circle cx="30" cy="30" r="12" class="lm-c"/><circle cx="30" cy="30" r="5" class="lm-d"/>
+      <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" class="lm-bg"/>
+        <g class="lm-fg"><path d="M8 25.5 16 7l8 18.5"/><path d="M11.2 18.4l3.2 3.2L25 10"/></g>
       </svg>
-      <div><div class="logo-name">JARVIS</div><div class="logo-sub">COMMAND CENTER</div></div>
+      <span class="logo-name">Abel</span>
     </div>
     <nav class="nav" role="tablist">
-      <button class="nav-item active" data-view="overview" role="tab" title="Command Center"><i class="ico ico-grid"></i><span class="nl">Command Center</span></button>
-      <button class="nav-item" data-view="chat" role="tab" title="Talk to JARVIS"><i class="ico ico-chat"></i><span class="nl">Talk to JARVIS</span></button>
+      <button class="nav-item active" data-view="overview" role="tab" title="Overview"><i class="ico ico-grid"></i><span class="nl">Overview</span></button>
+      <button class="nav-item" data-view="chat" role="tab" title="Chat"><i class="ico ico-chat"></i><span class="nl">Chat</span></button>
       <button class="nav-item" data-view="calendar" role="tab" title="Calendar"><i class="ico ico-cal"></i><span class="nl">Calendar</span></button>
       <button class="nav-item" data-view="chats" role="tab" title="Chats"><i class="ico ico-people"></i><span class="nl">Chats</span></button>
       <button class="nav-item" data-view="tasks" role="tab" title="Project tasks"><i class="ico ico-check"></i><span class="nl">Tasks</span></button>
@@ -32,23 +32,22 @@
       <button class="nav-item" data-view="tools" role="tab" title="Logins &amp; Tools"><i class="ico ico-key"></i><span class="nl">Logins &amp; Tools</span></button>
     </nav>
     <div class="side-foot">
-      <div class="os-line">JARVIS OS <span id="version">dev</span></div>
-      <div class="os-line">User: <span id="who-name">Operator</span></div>
-      <div class="brand-foot" id="brand-foot">PERSONAL INDUSTRIES</div>
+      <div class="foot-line">Version <span id="version">dev</span></div>
+      <div class="foot-line foot-credit">Built by Jake</div>
     </div>
   </aside>
 
   <div class="main">
     <header class="topbar">
-      <div class="status-pill"><span class="lbl">SYSTEM STATUS</span><span id="sys-dot" class="dot grey"></span><span id="sys-text" class="sys-text">CHECKING</span></div>
-      <div class="clock"><div id="clock-date" class="clock-date"></div><div id="clock-time" class="clock-time"></div></div>
+      <div class="status-pill" role="status"><span id="sys-dot" class="dot grey"></span><span id="sys-text" class="sys-text">Checking</span></div>
+      <div class="clock"><span id="clock-date" class="clock-date"></span><span id="clock-time" class="clock-time"></span></div>
       <div class="top-right">
         <div id="chips" class="chips" aria-label="Connection status"></div>
         <button id="btn-usage-resume" class="btn" hidden title="Usage cap reached: class chat summaries and date extraction are paused">Paused to save usage - resume</button>
         <button id="btn-start" class="btn btn-primary" hidden>Start</button>
         <button id="btn-restart" class="btn" hidden>Restart</button>
         <button id="btn-stop" class="btn btn-danger" hidden>Stop</button>
-        <div class="operator"><span class="op-name" id="op-name">Operator</span><span class="op-role">Operator</span></div>
+        <span class="op-name" id="op-name" hidden><span class="op-initial" id="op-initial" aria-hidden="true"></span><span id="op-label"></span></span>
       </div>
     </header>
 
@@ -56,54 +55,51 @@
 
     <main class="views">
 
-      <!-- ===== COMMAND CENTER ===== -->
+      <!-- ===== OVERVIEW ===== -->
       <section id="view-overview" class="view active">
         <div class="ov-grid">
-          <div class="hud area-core">
-            <h2>Core Overview</h2>
-            <ul id="core-list" class="rows"></ul>
-          </div>
-
-          <div class="hero area-hero" id="hero" data-state="offline">
-            <svg class="core" viewBox="0 0 400 400" aria-hidden="true">
-              <defs>
-                <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                <radialGradient id="core-fill" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="var(--core)" stop-opacity=".22"/><stop offset="1" stop-color="var(--core)" stop-opacity="0"/></radialGradient>
-              </defs>
-              <circle cx="200" cy="200" r="190" fill="url(#core-fill)"/>
-              <g class="spin-slow"><circle cx="200" cy="200" r="186" class="ring ring-ticks"/></g>
-              <g class="spin-rev"><circle cx="200" cy="200" r="160" class="ring ring-band" filter="url(#glow)"/></g>
-              <g class="spin-mid"><path d="M 200 40 A 160 160 0 0 1 340 120" class="ring ring-accent" filter="url(#glow)"/></g>
-              <g class="spin-slow"><circle cx="200" cy="200" r="132" class="ring ring-dash"/></g>
-              <circle cx="200" cy="200" r="112" class="ring ring-inner" filter="url(#glow)"/>
-              <polygon points="200,128 262,236 138,236" class="reactor" filter="url(#glow)"/>
-              <polygon points="200,152 242,226 158,226" class="reactor reactor-in"/>
-              <circle cx="200" cy="198" r="9" class="reactor-core" filter="url(#glow)"/>
-            </svg>
-            <div class="core-text">
-              <div class="core-name">J.A.R.V.I.S.</div>
-              <div id="core-state" class="core-state">OFFLINE</div>
-              <div id="core-sub" class="core-sub">Not running</div>
+          <div class="card area-hero hero" id="hero" data-state="offline">
+            <div class="hero-main">
+              <span class="hero-dot" aria-hidden="true"></span>
+              <div>
+                <div id="core-state" class="core-state">Stopped</div>
+                <div id="core-sub" class="core-sub">Not running</div>
+              </div>
+            </div>
+            <div class="area-mon stats-inline">
+              <div class="meter"><div class="meter-top"><span class="meter-lbl">Live connections</span><span class="meter-num" id="g-links-n">0/0</span></div>
+                <div class="progress"><span id="g-links"></span></div></div>
+              <div class="meter"><div class="meter-top"><span class="meter-lbl">Setup complete</span><span class="meter-num" id="g-setup-n">0/0</span></div>
+                <div class="progress"><span id="g-setup"></span></div></div>
+              <div class="meter meter-count"><span class="meter-lbl">Claude calls, last 24 h</span><span class="big-num" id="g-calls">0</span></div>
             </div>
           </div>
 
-          <div class="hud area-feed">
+          <div class="card area-conn">
+            <h2>Connections</h2>
+            <div id="connections" class="tiles"></div>
+            <details class="legend-box">
+              <summary>What the colours mean</summary>
+              <dl class="legend" aria-label="Legend">
+                <dt><span class="dot green"></span>Green</dt><dd>Logged in and checked recently while Abel runs</dd>
+                <dt><span class="dot amber"></span>Amber</dt><dd>Check overdue, or Abel is still starting</dd>
+                <dt><span class="dot grey"></span>Grey</dt><dd>Abel is stopped, so it cannot be confirmed (or not set up)</dd>
+                <dt><span class="dot red"></span>Red</dt><dd>Login needed, or checks keep failing. Use the Log in button</dd>
+              </dl>
+            </details>
+          </div>
+
+          <div class="card area-feed">
             <div class="row-between"><h2>Upcoming</h2><button class="link" data-goto="deadlines">View all</button></div>
             <ul id="feed" class="feed"></ul>
           </div>
 
-          <div class="hud area-conn">
-            <h2>Connections</h2>
-            <div id="connections" class="tiles"></div>
-            <dl class="legend" aria-label="Legend">
-              <dt><span class="dot green"></span>Green</dt><dd>Logged in and checked recently while JARVIS runs</dd>
-              <dt><span class="dot amber"></span>Amber</dt><dd>Check overdue, or JARVIS is still starting</dd>
-              <dt><span class="dot grey"></span>Grey</dt><dd>JARVIS is stopped, so it cannot be confirmed (or not set up)</dd>
-              <dt><span class="dot red"></span>Red</dt><dd>Login needed, or checks keep failing. Use the Log in button</dd>
-            </dl>
+          <div class="card area-core">
+            <h2>Services and setup</h2>
+            <ul id="core-list" class="rows"></ul>
           </div>
 
-          <div class="hud area-upd">
+          <div class="card area-upd">
             <h2>Updates</h2>
             <p id="update-msg" class="muted">Checking GitHub...</p>
             <ul id="update-changes" class="changes"></ul>
@@ -114,25 +110,16 @@
             </div>
           </div>
 
-          <div class="hud area-mon">
-            <h2>System Monitor</h2>
-            <div class="gauges">
-              <div class="gauge"><svg viewBox="0 0 80 80"><circle class="g-track" cx="40" cy="40" r="32"/><circle id="g-links" class="g-val" cx="40" cy="40" r="32"/></svg><div class="g-num" id="g-links-n">0/0</div><div class="g-lbl">Live links</div></div>
-              <div class="gauge"><svg viewBox="0 0 80 80"><circle class="g-track" cx="40" cy="40" r="32"/><circle id="g-setup" class="g-val" cx="40" cy="40" r="32"/></svg><div class="g-num" id="g-setup-n">0/0</div><div class="g-lbl">Setup done</div></div>
-              <div class="gauge"><div class="big-num" id="g-calls">0</div><div class="g-lbl">Claude calls, 24 h</div></div>
-            </div>
-          </div>
-
-          <div class="hud area-pend">
-            <h2>Pending Approvals</h2>
+          <div class="card area-pend">
+            <h2>Pending approvals</h2>
             <div id="pending"></div>
             <p class="muted small">Submissions and messages are approved only from the Telegram card. This panel cannot approve them.</p>
           </div>
 
-          <div class="hud area-alert">
-            <h2>Alert Settings</h2>
+          <div class="card area-alert">
+            <h2>Alert settings</h2>
             <dl class="kv" id="controls-kv"></dl>
-            <label class="check"><input type="checkbox" id="autostart"> Start JARVIS when this panel opens</label>
+            <label class="check"><input type="checkbox" id="autostart"> Start Abel when this panel opens</label>
             <p class="muted small">Change alert settings in Telegram: /pause, /resume, /quiet, /mute, /briefing.</p>
           </div>
         </div>
@@ -140,15 +127,15 @@
 
       <!-- ===== CHAT ===== -->
       <section id="view-chat" class="view">
-        <div class="hud chat-panel">
-          <div class="row-between"><h2>Talk to JARVIS</h2><button id="chat-new" class="btn">New conversation</button></div>
+        <div class="card chat-panel">
+          <div class="row-between"><h2>Chat</h2><button id="chat-new" class="btn">New conversation</button></div>
           <div id="chat-log" class="chat-log" aria-live="polite"></div>
         </div>
       </section>
 
       <!-- ===== CALENDAR ===== -->
       <section id="view-calendar" class="view">
-        <div class="hud">
+        <div class="card">
           <div class="row-between cal-head">
             <h2 id="cal-title">Calendar</h2>
             <div class="btn-row cal-nav">
@@ -171,8 +158,8 @@
             </aside>
           </div>
           <div class="cal-legend">
-            <span><i class="sw sw-j"></i>JARVIS deadline (confirmed)</span>
-            <span><i class="sw sw-t"></i>JARVIS deadline (tentative)</span>
+            <span><i class="sw sw-j"></i>Abel deadline (confirmed)</span>
+            <span><i class="sw sw-t"></i>Abel deadline (tentative)</span>
             <span><i class="sw sw-o"></i>Your other events</span>
             <span class="muted">Times are Singapore time. This tab only reads your calendar.</span>
           </div>
@@ -181,11 +168,11 @@
 
       <!-- ===== CHATS (Telegram groups) ===== -->
       <section id="view-chats" class="view">
-        <div class="hud" id="chats-setup" hidden>
+        <div class="card" id="chats-setup" hidden>
           <h2 id="cs-title">Telegram groups</h2>
           <div id="cs-body"></div>
         </div>
-        <div class="hud" id="chats-main" hidden>
+        <div class="card" id="chats-main" hidden>
           <div class="row-between"><h2>Group chats</h2><button id="chats-edit" class="btn">Change groups</button></div>
           <div id="chats-tabs" class="chat-tabs" role="tablist"></div>
           <div id="reply-banner" class="notice" hidden></div>
@@ -194,17 +181,17 @@
             <span id="chats-count" class="muted small"></span>
           </div>
           <div id="chats-log" class="msgs" aria-live="polite"></div>
-          <p id="chats-note" class="muted small">Read-only. JARVIS reads these groups as you and can never post to them. Messages come from other people, so treat links and requests in them with care.</p>
+          <p id="chats-note" class="muted small">Read-only. Abel reads these groups as you and can never post to them. Messages come from other people, so treat links and requests in them with care.</p>
         </div>
       </section>
 
       <!-- ===== TASKS (project groups: who owes what) ===== -->
       <section id="view-tasks" class="view">
-        <div class="hud" id="tasks-empty" hidden>
+        <div class="card" id="tasks-empty" hidden>
           <h2>Project tasks</h2>
-          <p>No group is marked as a project group yet. In the Chats tab, press Change groups and set the type of your project group to <b>Project</b>. JARVIS then keeps a list of who owes what from that group's chat. It only reads; it never posts in the group.</p>
+          <p>No group is marked as a project group yet. In the Chats tab, press Change groups and set the type of your project group to <b>Project</b>. Abel then keeps a list of who owes what from that group's chat. It only reads; it never posts in the group.</p>
         </div>
-        <div class="hud" id="tasks-main" hidden>
+        <div class="card" id="tasks-main" hidden>
           <div class="row-between"><h2>Project tasks</h2><span class="muted small" id="tasks-note">Read from the group chats. Items are tentative until you check them. Done items stay for 7 days.</span></div>
           <div id="tasks-groups"></div>
           <div class="method" id="tasks-aliases-box">
@@ -218,11 +205,11 @@
 
       <!-- ===== EMAIL ===== -->
       <section id="view-inbox" class="view">
-        <div class="hud" id="inbox-setup" hidden>
+        <div class="card" id="inbox-setup" hidden>
           <h2>School email</h2>
           <div id="inbox-setup-body"></div>
         </div>
-        <div class="hud" id="inbox-main" hidden>
+        <div class="card" id="inbox-main" hidden>
           <div class="row-between"><h2>School email</h2><span id="inbox-stats" class="muted small"></span></div>
           <div class="chat-tools">
             <div id="inbox-filters" class="chat-tabs" role="tablist">
@@ -236,14 +223,14 @@
             <ul id="inbox-list" class="mail-list"></ul>
             <article id="inbox-reader" class="mail-reader"><p class="muted">Select a message to read it.</p></article>
           </div>
-          <p class="muted small">Read-only. JARVIS can read this mailbox but never send, move or delete mail. Messages come from other people: treat links and requests in them with care. Marked Important means from the school and about something time-sensitive.</p>
+          <p class="muted small">Read-only. Abel can read this mailbox but never send, move or delete mail. Messages come from other people: treat links and requests in them with care. Marked Important means from the school and about something time-sensitive.</p>
         </div>
       </section>
 
       <!-- ===== DEADLINES ===== -->
       <section id="view-deadlines" class="view">
-        <div class="hud">
-          <div class="row-between"><h2>Upcoming Deadlines</h2>
+        <div class="card">
+          <div class="row-between"><h2>Upcoming deadlines</h2>
             <select id="dl-days"><option value="14">Next 14 days</option><option value="30">Next 30 days</option><option value="60" selected>Next 60 days</option><option value="180">Next 180 days</option></select>
           </div>
           <table class="table" id="dl-table"><thead><tr><th>Date</th><th>Time</th><th>Course</th><th>Item</th><th>Status</th></tr></thead><tbody></tbody></table>
@@ -253,9 +240,9 @@
 
       <!-- ===== USAGE ===== -->
       <section id="view-usage" class="view">
-        <div class="hud">
+        <div class="card">
           <h2>Usage cap</h2>
-          <p class="muted small">Optional. Set a daily and/or weekly limit in estimated usage (US dollars, worked out from the cost Claude Code reports; on a subscription it is a yardstick, not a bill). JARVIS warns you on Telegram at 80% and 100%. At 100% it pauses class chat summaries and date extraction; chat, Do it and the morning briefing keep working. Paused work resumes by itself when the day or week resets (Singapore time, weeks start Monday). Leave a limit empty for no cap.</p>
+          <p class="muted small">Optional. Set a daily and/or weekly limit in estimated usage (US dollars, worked out from the cost Claude Code reports; on a subscription it is a yardstick, not a bill). Abel warns you on Telegram at 80% and 100%. At 100% it pauses class chat summaries and date extraction; chat, Do it and the morning briefing keep working. Paused work resumes by itself when the day or week resets (Singapore time, weeks start Monday). Leave a limit empty for no cap.</p>
           <div id="cap-banner" class="notice" hidden></div>
           <div id="cap-meters" class="stats"></div>
           <div class="cap-form">
@@ -269,22 +256,22 @@
           <div class="row-between"><span id="cap-msg" class="muted small"></span>
             <span><button id="cap-resume" class="btn" hidden>Resume for the rest of the period</button> <button id="cap-save" class="btn btn-primary">Save</button></span></div>
         </div>
-        <div class="hud">
-          <div class="row-between"><h2>Claude Usage</h2>
+        <div class="card">
+          <div class="row-between"><h2>Claude usage</h2>
             <select id="usage-days"><option value="1">Last 24 hours</option><option value="7" selected>Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select>
           </div>
           <div id="usage-total" class="stats"></div>
           <table class="table" id="usage-table"><thead><tr><th>Job</th><th class="num">Calls</th><th class="num">Failed</th><th class="num">Avg time</th><th class="num">Input tokens</th><th class="num">Output tokens</th></tr></thead><tbody></tbody></table>
           <h3>Calls per day</h3>
           <div id="usage-days-chart" class="bars"></div>
-          <p class="muted small">Every call JARVIS makes to Claude is counted. Chat, Do it and browser chat report real token counts; the briefing, class chat summary and date extraction are estimates (marked ~), about 4 characters per token. Checking POLITEMall, Teams and your calendar makes no Claude calls. Usage counts against your Claude plan limits.</p>
+          <p class="muted small">Every call Abel makes to Claude is counted. Chat, Do it and browser chat report real token counts; the briefing, class chat summary and date extraction are estimates (marked ~), about 4 characters per token. Checking POLITEMall, Teams and your calendar makes no Claude calls. Usage counts against your Claude plan limits.</p>
         </div>
       </section>
 
       <!-- ===== LOGS ===== -->
       <section id="view-logs" class="view">
-        <div class="hud">
-          <div class="row-between"><h2>Ops Log</h2>
+        <div class="card">
+          <div class="row-between"><h2>Log</h2>
             <label class="check"><input type="checkbox" id="logs-follow" checked> Follow</label></div>
           <pre id="log-view" class="log"></pre>
         </div>
@@ -292,12 +279,12 @@
 
       <!-- ===== TOOLS ===== -->
       <section id="view-tools" class="view">
-        <div class="hud">
-          <h2>Logins &amp; Checks</h2>
+        <div class="card">
+          <h2>Logins and checks</h2>
           <ul id="tool-status" class="rows"></ul>
           <div class="connect-main">
             <div id="connect-main" class="btn-row"></div>
-            <p class="muted">Logs in to POLITEMall, Teams and Outlook (and Google Calendar if you set it up), then checks that each one really works. Sites that are already connected are only checked. A browser window opens when a sign-in is needed, and Microsoft's number is also sent to you on Telegram. JARVIS pauses while this runs and restarts by itself.</p>
+            <p class="muted">Logs in to POLITEMall, Teams and Outlook (and Google Calendar if you set it up), then checks that each one really works. Sites that are already connected are only checked. A browser window opens when a sign-in is needed, and Microsoft's number is also sent to you on Telegram. Abel pauses while this runs and restarts by itself.</p>
           </div>
           <details class="more-tools">
             <summary>Individual logins and checks</summary>
@@ -311,8 +298,8 @@
 
     <footer class="talk">
       <form id="chat-form" class="talk-form">
-        <div id="wave" class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-        <input id="chat-input" type="text" autocomplete="off" placeholder="Talk to JARVIS: ask about deadlines, material or anything at school" aria-label="Message to JARVIS">
+        <input id="chat-input" type="text" autocomplete="off" placeholder="Ask Abel about deadlines, course material or anything at school" aria-label="Message to Abel">
+        <span id="wave" class="busy" aria-hidden="true"></span>
         <button type="submit" id="chat-send" class="talk-send">Send</button>
       </form>
     </footer>
@@ -321,7 +308,7 @@
 <div id="update-pop" class="wizard" hidden role="dialog" aria-modal="true" aria-labelledby="update-pop-title">
   <div class="wiz-card">
     <h2 id="update-pop-title">New update available</h2>
-    <p id="update-pop-text">A new version of JARVIS is ready. Please update: it takes about a minute and JARVIS restarts by itself.</p>
+    <p id="update-pop-text">A new version of Abel is ready. It takes about a minute to update, and Abel restarts by itself.</p>
     <ul id="update-pop-changes" class="changes"></ul>
     <p id="update-pop-notes" class="muted small"></p>
     <div class="wiz-actions">
@@ -330,7 +317,6 @@
     </div>
   </div>
 </div>
-<script src="/static/app.js"></script>
 <div id="wizard" class="wizard" hidden role="dialog" aria-modal="true" aria-labelledby="wiz-title">
   <div class="wiz-card">
     <div class="wiz-steps" id="wiz-steps"></div>
@@ -338,5 +324,6 @@
     <div id="wiz-body"></div>
   </div>
 </div>
+<script src="/static/app.js"></script>
 </body>
 </html>

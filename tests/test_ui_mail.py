@@ -139,9 +139,9 @@ async def test_exclusive_job_pauses_jarvis_and_restarts_it(settings):
         first_pid = sup.pid
         r = await c.post("/api/jobs/start", headers=H, data=json.dumps({"id": "hello"}))
         assert r.status == 200
-        assert jobs.status()["output"].startswith("Pausing JARVIS")
+        assert jobs.status()["output"].startswith("Pausing Abel")
         await jobs._task
-        assert "hi" in jobs.status()["output"] and "JARVIS restarted." in jobs.status()["output"]
+        assert "hi" in jobs.status()["output"] and "Abel restarted." in jobs.status()["output"]
         assert sup.managed_running and sup.pid != first_pid  # it came back, as a new process
         # a job that does not touch the browser profile leaves JARVIS alone
         pid = sup.pid

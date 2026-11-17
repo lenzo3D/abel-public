@@ -38,7 +38,7 @@ def resolve_endpoint(socket_path=None, endpoint_file=None, environ=None) -> dict
     if endpoint_file:
         ep = _read_endpoint(endpoint_file)
         if ep is None:
-            raise RuntimeError(f"JARVIS Ops is not running (no usable endpoint file at {endpoint_file}).")
+            raise RuntimeError(f"Abel is not running (no usable endpoint file at {endpoint_file}).")
         return ep
     if environ.get("OPS_SOCKET"):
         return {"transport": "unix", "path": environ["OPS_SOCKET"]}

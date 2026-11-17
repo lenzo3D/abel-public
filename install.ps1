@@ -1,4 +1,4 @@
-# One-step installer for JARVIS on Windows 10/11. Safe to run again: it only fills in what is missing.
+# One-step installer for Abel on Windows 10/11. Safe to run again: it only fills in what is missing.
 #   Right-click > Run with PowerShell, or from a terminal:  powershell -ExecutionPolicy Bypass -File .\install.ps1
 #   Add -NoAutostart to skip the "start at login" question.
 param([switch]$NoAutostart)
@@ -39,13 +39,13 @@ New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot "state") | Ou
 $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 & icacls (Join-Path $PSScriptRoot "state") /inheritance:r /grant:r "*${sid}:(OI)(CI)F" | Out-Null
 if ($LASTEXITCODE -ne 0) { Write-Host "Warning: could not restrict the state folder to your user." -ForegroundColor Yellow }
-Say "Installing JARVIS and its dependencies (a minute or two)"
+Say "Installing Abel and its dependencies (a minute or two)"
 Run-Checked "Installing dependencies" { & $venvPy -m pip install --quiet -e . }
-Say "Installing the browser JARVIS uses to sign in to POLITEMall and Teams"
+Say "Installing the browser Abel uses to sign in to POLITEMall and Teams"
 Run-Checked "Installing the browser" { & $venvPy -m playwright install chromium }
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
-    Write-Host "`nNote: the Claude Code command (`"claude`") was not found. JARVIS needs it for chat, briefings and summaries." -ForegroundColor Yellow
+    Write-Host "`nNote: the Claude Code command (`"claude`") was not found. Abel needs it for chat, briefings and summaries." -ForegroundColor Yellow
     Write-Host "Install it from https://claude.com/claude-code, then run:  claude   (and sign in once)."
 }
 
@@ -54,7 +54,7 @@ Say "Checking the install"
 # (doctor reports problems itself; do not stop the installer on them)
 
 if (-not $NoAutostart) {
-    $ans = Read-Host "`nStart JARVIS automatically when you log in to this PC? [Y/n]"
+    $ans = Read-Host "`nStart Abel automatically when you log in to this PC? [Y/n]"
     if ($ans -notmatch '^[Nn]') { & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "scripts\install_startup.ps1") }
 }
 
@@ -70,7 +70,7 @@ try {
 if ($up) {
     Start-Process "http://127.0.0.1:$port"
 } else {
-    Write-Host "Keep this window open while you use JARVIS (or install auto-start). Close it to stop the panel."
+    Write-Host "Keep this window open while you use Abel (or install auto-start). Close it to stop the panel."
     $env:JARVIS_UI_OPEN = "1"
     & $venvPy -m ui
 }
