@@ -45,7 +45,10 @@ document.querySelectorAll(".nav-item").forEach((b) => b.addEventListener("click"
 document.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showView(b.dataset.goto)));
 function showView(name) {
   currentView = name;
-  document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
+  document.querySelectorAll(".nav-item").forEach((b) => {
+    b.classList.toggle("active", b.dataset.view === name);
+    if (b.dataset.view === name) { $("page-title").textContent = b.textContent.trim(); document.title = "Abel: " + b.textContent.trim(); }
+  });
   document.querySelectorAll(".view").forEach((p) => p.classList.toggle("active", p.id === "view-" + name));
   if (name === "overview") { loadFeed(); loadCalls(); }
   if (name === "calendar") loadCalendar();
@@ -198,15 +201,56 @@ async function runJob(id) {
   showView("tools");
 }
 
-async function loadFeed() {
-  const { data } = await api("/api/deadlines?days=21");
-  const rows = (data || []).slice(0, 6);
-  fill($("feed"), ...(rows.length ? rows.map((d) => el("li", {},
-    el("div", { class: "when" }, d.date, el("br"), d.time || "All day"),
-    el("div", { class: "what" }, el("b", { title: d.title }, d.title),
-      el("div", { class: "meta" }, d.course, el("span", { class: "tag " + (d.confirmed ? "tag-ok" : "tag-warn") }, d.confirmed ? "Confirmed" : "Tentative")))))
-    : [el("li", {}, el("div", { class: "what muted" }, "Nothing due in the next 21 days."))]));
+/* The week sheet: a 7-day time track with a "now" needle, one column per day underneath. Anything due within
+   48 hours gets the highlighter. Items after day 7 go to the "After this week" list. */
+const DAY_MS = 864e5, SOON_MS = 48 * 36e5;
+let weekRows = [], weekDrawn = false;
+function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+function renderWeek() {
+  const now = new Date(), day0 = startOfDay(now), end = new Date(+day0 + 7 * DAY_MS);
+  const items = weekRows.map((d) => ({ ...d, at: new Date(d.sort) })).filter((d) => d.at >= day0 && d.at < end);
+  const live = items.filter((d) => d.at >= now || !d.time).length;
+  $("week-title").textContent = live === 0 ? "Nothing due in the next 7 days" : live === 1 ? "1 thing due in the next 7 days" : live + " things due in the next 7 days";
+  const pos = (t) => Math.min(100, Math.max(0, ((t - day0) / (7 * DAY_MS)) * 100));
+  const track = el("div", { class: "track", "aria-hidden": "true" }, el("span", { class: "track-past", style: "width:" + pos(now) + "%" }));
+  const cols = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(+day0 + i * DAY_MS);
+    const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en-GB", { weekday: "short" });
+    const dayItems = items.filter((x) => startOfDay(x.at).getTime() === d.getTime()).sort((a, b) => a.at - b.at);
+    const slips = dayItems.map((x) => {
+      const gone = x.time && x.at < now, soon = !gone && x.at - now < SOON_MS;
+      return el("li", { class: "slip" + (soon ? " soon" : "") + (gone ? " gone" : "") + (x.confirmed ? "" : " tentative"), title: x.title + "\n" + x.course + (x.confirmed ? "" : "\nTentative: check the date") },
+        el("span", { class: "slip-time" }, x.time || "All day"), el("span", { class: "slip-title" }, el("span", { class: "hl" }, x.title)), el("span", { class: "slip-course" }, x.course));
+    });
+    cols.push(el("div", { class: "day" + (i === 0 ? " is-today" : "") + (d.getDay() % 6 === 0 ? " weekend" : "") },
+      el("div", { class: "day-head" }, el("span", { class: "day-name" }, label), el("span", { class: "day-num" }, String(d.getDate()))),
+      slips.length ? el("ul", { class: "slips" }, ...slips) : el("p", { class: "day-free" }, "Free")));
+    track.append(el("span", { class: "track-day", style: "left:" + (i / 7 * 100) + "%" }));
+  }
+  for (const x of items) {
+    const gone = x.time && x.at < now, soon = !gone && x.at - now < SOON_MS;
+    track.append(el("span", { class: "tick" + (soon ? " soon" : "") + (gone ? " gone" : ""), style: "left:" + pos(x.time ? x.at : new Date(+x.at + 12 * 36e5)) + "%" }));
+  }
+  track.append(el("span", { class: "needle", style: "left:" + pos(now) + "%" }, el("span", { class: "needle-time" }, now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }))));
+  const wrap = $("week");
+  wrap.classList.toggle("draw", !weekDrawn);
+  weekDrawn = true;
+  fill(wrap, track, el("div", { class: "days" }, ...cols));
 }
+async function loadFeed() {
+  const { data } = await api("/api/deadlines?days=28");
+  weekRows = data || [];
+  renderWeek();
+  const later = new Date(+startOfDay(new Date()) + 7 * DAY_MS);
+  const rows = weekRows.filter((d) => new Date(d.sort) >= later).slice(0, 6);
+  fill($("feed"), ...(rows.length ? rows.map((d) => el("li", {},
+    el("div", { class: "when" }, el("b", {}, d.date.split(" ").slice(1).join(" ")), el("span", {}, d.date.split(" ")[0] + (d.time ? ", " + d.time : ""))),
+    el("div", { class: "what" }, el("b", { title: d.title }, d.title),
+      el("div", { class: "meta" }, d.course, d.confirmed ? "" : el("span", { class: "tag tag-warn" }, "Tentative")))))
+    : [el("li", {}, el("div", { class: "what muted" }, "Nothing else due in the next four weeks."))]));
+}
+setInterval(() => { if (currentView === "overview" && weekRows.length) renderWeek(); }, 60000);
 async function loadCalls() {
   const { data } = await api("/api/usage?days=1");
   $("g-calls").textContent = fmtNum(data ? data.total.calls : 0);
@@ -237,14 +281,27 @@ function addMsg(kind, text, who) {
 }
 /* "jarvis" stays as the stored message kind so chat history saved by older versions still loads */
 history.forEach((m) => addMsg(m.kind, m.text, m.kind === "user" ? "You" : m.kind === "jarvis" ? "Abel" : ""));
-if (!history.length) addMsg("progress", "Ask about deadlines, course material or anything else at school.");
+const SUGGESTIONS = ["What's due this week?", "What's on my calendar tomorrow?", "Any new announcements today?", "Summarise this week's Teams posts"];
+function chatEmpty() {
+  const mark = document.querySelector(".logo-mark").cloneNode(true);
+  const box = el("div", { class: "chat-empty" }, mark, el("h3", {}, "Ask Abel anything about school"),
+    el("p", {}, "Deadlines, course material, your calendar, announcements and email."),
+    el("div", { class: "suggest" }, ...SUGGESTIONS.map((q) => {
+      const b = el("button", { class: "btn", type: "button" }, q);
+      b.addEventListener("click", () => { if (!$("chat-send").disabled) sendChat(q); });
+      return b;
+    })));
+  chatLog.append(box);
+}
+if (!history.length) chatEmpty();
 
 async function sendChat(text) {
   history.push({ kind: "user", text }); persist();
+  chatLog.querySelector(".chat-empty")?.remove();
   addMsg("user", text, "You");
   $("chat-send").disabled = true;
   $("wave").classList.add("on");
-  const progress = addMsg("progress", "Working on it...");
+  const progress = addMsg("pending", "Thinking");
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: HEADERS, body: JSON.stringify({ text }) });
     if (!r.ok) {
@@ -287,7 +344,7 @@ $("chat-form").addEventListener("submit", (e) => {
 $("chat-new").addEventListener("click", async () => {
   await api("/api/chat/reset", "POST");
   history.length = 0; persist(); chatLog.replaceChildren();
-  addMsg("progress", "New conversation started.");
+  chatEmpty();
 });
 
 /* ---------- email (read-only; message text is untrusted, so it is only ever shown as plain text) ---------- */

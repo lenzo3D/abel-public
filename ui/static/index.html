@@ -20,16 +20,16 @@
       <span class="logo-name">Abel</span>
     </div>
     <nav class="nav" role="tablist">
-      <button class="nav-item active" data-view="overview" role="tab" title="Overview"><i class="ico ico-grid"></i><span class="nl">Overview</span></button>
-      <button class="nav-item" data-view="chat" role="tab" title="Chat"><i class="ico ico-chat"></i><span class="nl">Chat</span></button>
-      <button class="nav-item" data-view="calendar" role="tab" title="Calendar"><i class="ico ico-cal"></i><span class="nl">Calendar</span></button>
-      <button class="nav-item" data-view="chats" role="tab" title="Chats"><i class="ico ico-people"></i><span class="nl">Chats</span></button>
-      <button class="nav-item" data-view="tasks" role="tab" title="Project tasks"><i class="ico ico-check"></i><span class="nl">Tasks</span></button>
-      <button class="nav-item" data-view="inbox" role="tab" title="Email"><i class="ico ico-mail"></i><span class="nl">Email</span></button>
-      <button class="nav-item" data-view="deadlines" role="tab" title="Deadlines"><i class="ico ico-list"></i><span class="nl">Deadlines</span></button>
-      <button class="nav-item" data-view="usage" role="tab" title="Usage"><i class="ico ico-bars"></i><span class="nl">Usage</span></button>
-      <button class="nav-item" data-view="logs" role="tab" title="Logs"><i class="ico ico-term"></i><span class="nl">Logs</span></button>
-      <button class="nav-item" data-view="tools" role="tab" title="Logins &amp; Tools"><i class="ico ico-key"></i><span class="nl">Logins &amp; Tools</span></button>
+      <button class="nav-item active" data-view="overview" role="tab" title="Overview"><span class="nav-ic" style="--c:#5856d6"><i class="ico ico-grid"></i></span><span class="nl">Overview</span></button>
+      <button class="nav-item" data-view="chat" role="tab" title="Chat"><span class="nav-ic" style="--c:#34c759"><i class="ico ico-chat"></i></span><span class="nl">Chat</span></button>
+      <button class="nav-item" data-view="calendar" role="tab" title="Calendar"><span class="nav-ic" style="--c:#ff3b30"><i class="ico ico-cal"></i></span><span class="nl">Calendar</span></button>
+      <button class="nav-item" data-view="chats" role="tab" title="Chats"><span class="nav-ic" style="--c:#0a84ff"><i class="ico ico-people"></i></span><span class="nl">Chats</span></button>
+      <button class="nav-item" data-view="tasks" role="tab" title="Project tasks"><span class="nav-ic" style="--c:#ff9500"><i class="ico ico-check"></i></span><span class="nl">Tasks</span></button>
+      <button class="nav-item" data-view="inbox" role="tab" title="Email"><span class="nav-ic" style="--c:#32ade6"><i class="ico ico-mail"></i></span><span class="nl">Email</span></button>
+      <button class="nav-item" data-view="deadlines" role="tab" title="Deadlines"><span class="nav-ic" style="--c:#ff2d55"><i class="ico ico-list"></i></span><span class="nl">Deadlines</span></button>
+      <button class="nav-item" data-view="usage" role="tab" title="Usage"><span class="nav-ic" style="--c:#af52de"><i class="ico ico-bars"></i></span><span class="nl">Usage</span></button>
+      <button class="nav-item" data-view="logs" role="tab" title="Logs"><span class="nav-ic" style="--c:#636366"><i class="ico ico-term"></i></span><span class="nl">Logs</span></button>
+      <button class="nav-item" data-view="tools" role="tab" title="Logins &amp; Tools"><span class="nav-ic" style="--c:#8e8e93"><i class="ico ico-key"></i></span><span class="nl">Logins &amp; Tools</span></button>
     </nav>
     <div class="side-foot">
       <div class="foot-line">Version <span id="version">dev</span></div>
@@ -39,10 +39,13 @@
 
   <div class="main">
     <header class="topbar">
-      <div class="status-pill" role="status"><span id="sys-dot" class="dot grey"></span><span id="sys-text" class="sys-text">Checking</span></div>
-      <div class="clock"><span id="clock-date" class="clock-date"></span><span id="clock-time" class="clock-time"></span></div>
+      <div class="page-head">
+        <h1 id="page-title" class="page-title">Overview</h1>
+        <div class="clock"><span id="clock-date" class="clock-date"></span><span id="clock-time" class="clock-time"></span></div>
+      </div>
       <div class="top-right">
-        <div id="chips" class="chips" aria-label="Connection status"></div>
+        <div class="status-pill" role="status"><span id="sys-dot" class="dot grey"></span><span id="sys-text" class="sys-text">Checking</span></div>
+        <div id="chips" class="chips" aria-label="Connection status" hidden></div>
         <button id="btn-usage-resume" class="btn" hidden title="Usage cap reached: class chat summaries and date extraction are paused">Paused to save usage - resume</button>
         <button id="btn-start" class="btn btn-primary" hidden>Start</button>
         <button id="btn-restart" class="btn" hidden>Restart</button>
@@ -57,70 +60,69 @@
 
       <!-- ===== OVERVIEW ===== -->
       <section id="view-overview" class="view active">
-        <div class="ov-grid">
-          <div class="card area-hero hero" id="hero" data-state="offline">
-            <div class="hero-main">
-              <span class="hero-dot" aria-hidden="true"></span>
-              <div>
-                <div id="core-state" class="core-state">Stopped</div>
-                <div id="core-sub" class="core-sub">Not running</div>
-              </div>
+        <div class="week-sheet" id="hero" data-state="offline">
+          <div class="ws-head">
+            <div class="ws-lead">
+              <h2 id="week-title" class="ws-title">Your next 7 days</h2>
+              <p class="ws-status"><span class="hero-dot" aria-hidden="true"></span><span id="core-state">Stopped</span><span id="core-sub" class="muted">Not running</span></p>
             </div>
-            <div class="area-mon stats-inline">
-              <div class="meter"><div class="meter-top"><span class="meter-lbl">Live connections</span><span class="meter-num" id="g-links-n">0/0</span></div>
-                <div class="progress"><span id="g-links"></span></div></div>
-              <div class="meter"><div class="meter-top"><span class="meter-lbl">Setup complete</span><span class="meter-num" id="g-setup-n">0/0</span></div>
-                <div class="progress"><span id="g-setup"></span></div></div>
-              <div class="meter meter-count"><span class="meter-lbl">Claude calls, last 24 h</span><span class="big-num" id="g-calls">0</span></div>
+            <dl class="facts">
+              <div><dt>Connections live</dt><dd><span id="g-links-n">0/0</span><span class="meter-bar"><span id="g-links"></span></span></dd></div>
+              <div><dt>Setup done</dt><dd><span id="g-setup-n">0/0</span><span class="meter-bar"><span id="g-setup"></span></span></dd></div>
+              <div><dt>Claude calls, 24 h</dt><dd id="g-calls">0</dd></div>
+            </dl>
+          </div>
+          <div id="week" class="week" aria-label="Deadlines over the next seven days"></div>
+        </div>
+
+        <div class="ov-cols">
+          <div class="ov-col">
+            <div class="panel">
+              <h2>Connections</h2>
+              <div id="connections" class="tiles"></div>
+              <details class="legend-box">
+                <summary>What the colours mean</summary>
+                <dl class="legend" aria-label="Legend">
+                  <dt><span class="dot green"></span>Green</dt><dd>Logged in and checked recently while Abel runs</dd>
+                  <dt><span class="dot amber"></span>Amber</dt><dd>Check overdue, or Abel is still starting</dd>
+                  <dt><span class="dot grey"></span>Grey</dt><dd>Abel is stopped, so it cannot be confirmed (or not set up)</dd>
+                  <dt><span class="dot red"></span>Red</dt><dd>Login needed, or checks keep failing. Use the Log in button</dd>
+                </dl>
+              </details>
             </div>
-          </div>
-
-          <div class="card area-conn">
-            <h2>Connections</h2>
-            <div id="connections" class="tiles"></div>
-            <details class="legend-box">
-              <summary>What the colours mean</summary>
-              <dl class="legend" aria-label="Legend">
-                <dt><span class="dot green"></span>Green</dt><dd>Logged in and checked recently while Abel runs</dd>
-                <dt><span class="dot amber"></span>Amber</dt><dd>Check overdue, or Abel is still starting</dd>
-                <dt><span class="dot grey"></span>Grey</dt><dd>Abel is stopped, so it cannot be confirmed (or not set up)</dd>
-                <dt><span class="dot red"></span>Red</dt><dd>Login needed, or checks keep failing. Use the Log in button</dd>
-              </dl>
-            </details>
-          </div>
-
-          <div class="card area-feed">
-            <div class="row-between"><h2>Upcoming</h2><button class="link" data-goto="deadlines">View all</button></div>
-            <ul id="feed" class="feed"></ul>
-          </div>
-
-          <div class="card area-core">
-            <h2>Services and setup</h2>
-            <ul id="core-list" class="rows"></ul>
-          </div>
-
-          <div class="card area-upd">
-            <h2>Updates</h2>
-            <p id="update-msg" class="muted">Checking GitHub...</p>
-            <ul id="update-changes" class="changes"></ul>
-            <p id="update-notes" class="muted small"></p>
-            <div class="btn-row">
-              <button id="update-check" class="btn">Check now</button>
-              <button id="update-apply" class="btn btn-primary" hidden>Update and restart</button>
+            <div class="panel">
+              <h2>Services and setup</h2>
+              <ul id="core-list" class="rows"></ul>
             </div>
           </div>
-
-          <div class="card area-pend">
-            <h2>Pending approvals</h2>
-            <div id="pending"></div>
-            <p class="muted small">Submissions and messages are approved only from the Telegram card. This panel cannot approve them.</p>
-          </div>
-
-          <div class="card area-alert">
-            <h2>Alert settings</h2>
-            <dl class="kv" id="controls-kv"></dl>
-            <label class="check"><input type="checkbox" id="autostart"> Start Abel when this panel opens</label>
-            <p class="muted small">Change alert settings in Telegram: /pause, /resume, /quiet, /mute, /briefing.</p>
+          <div class="ov-col">
+            <div class="panel">
+              <div class="row-between"><h2>After this week</h2><button class="link" data-goto="deadlines">All deadlines</button></div>
+              <ul id="feed" class="feed"></ul>
+            </div>
+            <div class="panel">
+              <section class="sub">
+                <h2>Updates</h2>
+                <p id="update-msg" class="muted">Checking GitHub...</p>
+                <ul id="update-changes" class="changes"></ul>
+                <p id="update-notes" class="muted small"></p>
+                <div class="btn-row">
+                  <button id="update-check" class="btn">Check now</button>
+                  <button id="update-apply" class="btn btn-primary" hidden>Update and restart</button>
+                </div>
+              </section>
+              <section class="sub">
+                <h2>Waiting for your approval</h2>
+                <div id="pending"></div>
+                <p class="muted small">Submissions and messages are approved only from the Telegram card. This panel cannot approve them.</p>
+              </section>
+              <section class="sub">
+                <h2>Alerts</h2>
+                <dl class="kv" id="controls-kv"></dl>
+                <label class="check"><input type="checkbox" id="autostart"> Start Abel when this panel opens</label>
+                <p class="muted small">Change these in Telegram with /pause, /resume, /quiet, /mute and /briefing.</p>
+              </section>
+            </div>
           </div>
         </div>
       </section>
@@ -128,7 +130,7 @@
       <!-- ===== CHAT ===== -->
       <section id="view-chat" class="view">
         <div class="card chat-panel">
-          <div class="row-between"><h2>Chat</h2><button id="chat-new" class="btn">New conversation</button></div>
+          <div class="chat-top"><button id="chat-new" class="btn btn-quiet">New conversation</button></div>
           <div id="chat-log" class="chat-log" aria-live="polite"></div>
         </div>
       </section>
